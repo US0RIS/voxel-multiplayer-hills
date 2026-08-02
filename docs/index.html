@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Voxel Multiplayer Hills v4.1.0 deployment build" />
+  <title>Voxel Multiplayer Hills — v4.1.0</title>
+  <link rel="stylesheet" href="styles.css?v=4.1.0" />
+</head>
+<body>
+  <main id="game" aria-label="Voxel multiplayer rolling hills version 4.1.0">
+    <canvas id="canvas" tabindex="0"></canvas>
+  </main>
+
+  <div id="loading" role="status">
+    <div class="loader"></div>
+    <div id="loading-text">Starting…</div>
+  </div>
+
+  <div id="build-badge" aria-live="polite">
+    <strong>MULTIPLAYER HILLS · v4.1.0</strong>
+    <span id="network-label">connecting…</span>
+    <span id="player-label">players loading…</span>
+    <span id="seed-label">seed loading…</span>
+    <span id="chunk-label">chunk loading…</span>
+  </div>
+
+  <div id="help" aria-hidden="true">
+    <span><kbd>WASD</kbd> / <kbd>Arrows</kbd> move</span>
+    <span><kbd>Scroll</kbd> zoom</span>
+    <span>Share this page URL to play together</span>
+  </div>
+
+  <div id="error" hidden>
+    <strong>Unable to start the prototype.</strong>
+    <span id="error-message"></span>
+  </div>
+
+  <script src="config.js?v=4.1.0"></script>
+  <script type="module" src="multiplayer-hills-v4.1.0.js?v=4.1.0"></script>
+</body>
+</html>
