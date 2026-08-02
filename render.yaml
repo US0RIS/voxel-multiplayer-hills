@@ -2,6 +2,7 @@ services:
   - type: web
     name: voxel-multiplayer-hills-410-server
     runtime: python
+    plan: free
     rootDir: server
     buildCommand: echo "No build step required"
     startCommand: python3 server.py
