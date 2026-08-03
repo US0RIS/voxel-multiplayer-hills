@@ -1,0 +1,672 @@
+/* Ridgewood — Home / server browser, v0.5.0
+ *
+ * ART DIRECTION — "Golden Hour Screen Print"
+ * ------------------------------------------------------------------------
+ * The world is a blocky voxel valley, so the menu is built out of blocks too.
+ * Three rules hold the whole style together:
+ *
+ *   1. NOTHING IS ROUND. No border-radius anywhere. Corners are notched with
+ *      little square studs so every surface reads as a cut cube face.
+ *   2. EVERY SURFACE IS EXTRUDED. Panels and buttons sit on a hard, un-blurred
+ *      offset shadow in their own darker "side face" colour, exactly the way a
+ *      voxel cube shows a lit top and a shaded side. Pressing a button drops it
+ *      down into its own shadow.
+ *   3. THE PALETTE IS A DUSK PRINT. Two warm inks (cream, amber) over three
+ *      cool ones (pine, moss, deep teal), like a four-colour screen print of
+ *      golden hour over the hills.
+ *
+ * Everything here is namespaced to #home / .rw-* / #rw-*. It must never reach
+ * into the chat UI — the chat stylesheet owns that surface (see the 4.3.1
+ * regression note in styles.css).
+ */
+
+:root {
+  --rw-ink: #0a0f0c;
+  --rw-ink-soft: #131b16;
+  --rw-cream: #f6f0e0;
+  --rw-cream-dim: #c8c4b2;
+  --rw-amber: #f0a93b;
+  --rw-amber-hi: #ffd27a;
+  --rw-amber-lo: #b26d16;
+  --rw-moss: #7fb457;
+  --rw-moss-lo: #3c6b32;
+  --rw-pine: #22302a;
+  --rw-pine-lo: #131c18;
+  --rw-blurple: #5865f2;
+  --rw-blurple-lo: #2f38a8;
+  --rw-stud: 7px;
+  --rw-rail: 3px;
+  --rw-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ===================================================================== shell */
+
+#home {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  color: var(--rw-cream);
+  background: #0b1411;
+  opacity: 1;
+  transition: opacity 0.34s ease;
+}
+
+#home[hidden] { display: none !important; }
+#home[data-leaving="true"] { opacity: 0; pointer-events: none; }
+
+#home-scape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Print texture: a fine horizontal rule screen plus a heavy vignette so the
+ * type always has something dark to sit on, whatever the terrain does. */
+.rw-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.16) 0px,
+    rgba(0, 0, 0, 0.16) 1px,
+    rgba(0, 0, 0, 0) 1px,
+    rgba(0, 0, 0, 0) 3px
+  );
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+}
+
+.rw-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(100deg, rgba(6, 11, 9, 0.94) 0%, rgba(6, 11, 9, 0.72) 34%, rgba(6, 11, 9, 0.06) 66%, rgba(6, 11, 9, 0.34) 100%),
+    radial-gradient(120% 90% at 30% 55%, rgba(0, 0, 0, 0) 42%, rgba(4, 8, 6, 0.66) 100%);
+}
+
+/* The stage keeps clear of the chat panel, which is fixed to the right edge
+ * and owns --chat-width. When chat is collapsed only its 54px tab remains. */
+.rw-stage {
+  position: relative;
+  height: 100%;
+  padding: 26px 34px 24px 44px;
+  padding-right: calc(var(--chat-width, 620px) + 34px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  transition: padding-right 0.21s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html[data-chat-collapsed="true"] .rw-stage { padding-right: 92px; }
+
+/* ================================================================== top bar */
+
+.rw-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 46px;
+}
+
+.rw-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.rw-brand-cube { width: 30px; height: 30px; display: block; flex: none; }
+
+.rw-brand-name {
+  font: 800 15px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--rw-cream);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+.rw-chip {
+  padding: 5px 9px 4px;
+  border: 2px solid rgba(246, 240, 224, 0.24);
+  background: rgba(10, 15, 12, 0.62);
+  font: 700 10px/1 var(--rw-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rw-amber);
+}
+
+/* =================================================================== centre */
+
+.rw-body {
+  align-self: center;
+  display: grid;
+  gap: 30px;
+  justify-items: start;
+  max-width: 640px;
+  min-width: 0;
+}
+
+.rw-wordmark {
+  width: min(100%, 560px);
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.62));
+}
+
+.rw-wordmark svg { display: block; width: 100%; height: auto; }
+
+.rw-lede {
+  display: grid;
+  gap: 10px;
+  max-width: 34em;
+}
+
+.rw-lede p {
+  margin: 0;
+  font: 400 16px/1.62 Inter, system-ui, sans-serif;
+  color: rgba(246, 240, 224, 0.8);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+.rw-rule {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 700 10px/1 var(--rw-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(246, 240, 224, 0.42);
+}
+
+.rw-rule::after {
+  content: "";
+  flex: 1;
+  height: 3px;
+  background: repeating-linear-gradient(to right, rgba(246, 240, 224, 0.26) 0 3px, transparent 3px 6px);
+}
+
+/* ============================================================= slab buttons */
+
+/* The shared voxel-slab recipe: a hard border, a solid offset "side face",
+ * corner studs punched out of the fill, and a press that drops the face into
+ * its own shadow. --face / --side / --edge are set per variant. */
+.rw-slab {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rw-face {
+  position: relative;
+  display: block;
+  border: var(--rw-rail) solid var(--rw-ink);
+  background-color: var(--face);
+  background-image:
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    var(--sheen, linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.18)));
+  background-repeat: no-repeat;
+  background-position: 0 0, 100% 0, 0 100%, 100% 100%, 0 0;
+  background-size: var(--rw-stud) var(--rw-stud), var(--rw-stud) var(--rw-stud),
+    var(--rw-stud) var(--rw-stud), var(--rw-stud) var(--rw-stud), 100% 100%;
+  box-shadow:
+    inset 0 3px 0 var(--edge, rgba(255, 255, 255, 0.28)),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.26),
+    0 8px 0 0 var(--side),
+    0 8px 0 var(--rw-rail) var(--rw-ink),
+    0 20px 30px rgba(0, 0, 0, 0.45);
+  transform: translateY(0);
+  transition: transform 0.11s ease, box-shadow 0.11s ease, filter 0.11s ease;
+}
+
+.rw-slab:hover .rw-face,
+.rw-slab:focus-visible .rw-face {
+  transform: translateY(-3px);
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 3px 0 var(--edge, rgba(255, 255, 255, 0.28)),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.26),
+    0 11px 0 0 var(--side),
+    0 11px 0 var(--rw-rail) var(--rw-ink),
+    0 26px 38px rgba(0, 0, 0, 0.5);
+}
+
+.rw-slab:focus-visible { outline: none; }
+.rw-slab:focus-visible .rw-face { outline: 3px solid var(--rw-amber-hi); outline-offset: 5px; }
+
+.rw-slab:active .rw-face {
+  transform: translateY(8px);
+  filter: brightness(0.97);
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+    0 0 0 0 var(--side),
+    0 0 0 var(--rw-rail) var(--rw-ink),
+    0 6px 12px rgba(0, 0, 0, 0.42);
+}
+
+/* ------------------------------------------------------------- server cards */
+
+.rw-servers {
+  display: grid;
+  gap: 26px;
+  width: min(100%, 560px);
+}
+
+.rw-card .rw-face {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 19px 22px 20px;
+}
+
+.rw-card-glyph { width: 54px; height: 54px; display: block; }
+
+.rw-card-text { display: grid; gap: 5px; min-width: 0; }
+
+.rw-card-title {
+  font: 800 21px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.rw-card-sub {
+  font: 500 12.5px/1.35 Inter, system-ui, sans-serif;
+  letter-spacing: 0.015em;
+  opacity: 0.82;
+}
+
+.rw-card-meta {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+  font: 700 10px/1 var(--rw-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rw-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 4px;
+  border: 2px solid rgba(10, 15, 12, 0.42);
+  background: rgba(10, 15, 12, 0.2);
+}
+
+.rw-dot {
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+  flex: none;
+}
+
+.rw-card-arrow { font-size: 19px; line-height: 1; opacity: 0.66; }
+
+/* Public server — the lit amber face. */
+.rw-card--public {
+  --face: #f0a93b;
+  --side: #a55f11;
+  --edge: rgba(255, 236, 190, 0.6);
+  --sheen: linear-gradient(180deg, rgba(255, 233, 176, 0.78) 0%, rgba(255, 255, 255, 0) 46%, rgba(120, 58, 0, 0.34) 100%);
+  color: #2a1704;
+}
+
+.rw-card--public .rw-card-sub { color: rgba(42, 23, 4, 0.78); }
+.rw-card--public .rw-count { color: #23430f; }
+
+/* Private server — the shaded pine face. */
+.rw-card--private {
+  --face: #2c3d36;
+  --side: #131d19;
+  --edge: rgba(180, 214, 187, 0.24);
+  --sheen: linear-gradient(180deg, rgba(200, 232, 205, 0.14) 0%, rgba(0, 0, 0, 0) 44%, rgba(0, 0, 0, 0.3) 100%);
+  color: var(--rw-cream);
+}
+
+.rw-card--private .rw-card-sub { color: rgba(246, 240, 224, 0.62); }
+.rw-card--private .rw-count { color: rgba(246, 240, 224, 0.55); border-color: rgba(246, 240, 224, 0.16); }
+
+/* -------------------------------------------------------- discord / account */
+
+.rw-discord {
+  --face: #5865f2;
+  --side: #2b34a5;
+  --edge: rgba(214, 219, 255, 0.44);
+  --sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, 0.24) 100%);
+  color: #fff;
+  width: auto;
+}
+
+.rw-discord .rw-face {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 17px 12px;
+  font: 800 12px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.rw-discord svg { width: 19px; height: 19px; display: block; flex: none; }
+
+.rw-account { display: flex; align-items: center; gap: 12px; }
+
+.rw-identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 7px 11px 7px 7px;
+  border: 2px solid rgba(246, 240, 224, 0.18);
+  background: rgba(10, 15, 12, 0.72);
+}
+
+.rw-avatar {
+  width: 32px;
+  height: 32px;
+  display: block;
+  flex: none;
+  border: 2px solid var(--rw-ink);
+  background: var(--rw-moss-lo);
+  object-fit: cover;
+  image-rendering: auto;
+}
+
+.rw-identity-text { display: grid; gap: 2px; }
+
+.rw-identity-name {
+  font: 700 12.5px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw-identity-role {
+  font: 700 9px/1 var(--rw-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rw-moss);
+}
+
+.rw-ghost {
+  padding: 8px 11px 7px;
+  border: 2px solid rgba(246, 240, 224, 0.2);
+  background: transparent;
+  color: rgba(246, 240, 224, 0.62);
+  font: 700 10px/1 var(--rw-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.rw-ghost:hover {
+  color: var(--rw-cream);
+  border-color: rgba(246, 240, 224, 0.5);
+  background: rgba(246, 240, 224, 0.08);
+}
+
+/* =================================================================== footer */
+
+.rw-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px 20px;
+  flex-wrap: wrap;
+  font: 600 10px/1.6 var(--rw-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(246, 240, 224, 0.4);
+}
+
+.rw-foot strong { color: rgba(246, 240, 224, 0.68); font-weight: 700; }
+
+.rw-status { display: inline-flex; align-items: center; gap: 7px; }
+.rw-status .rw-dot { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08); }
+.rw-status[data-state="online"] { color: var(--rw-moss); }
+.rw-status[data-state="checking"] { color: var(--rw-amber); }
+.rw-status[data-state="offline"] { color: #e2705f; }
+
+.rw-hint {
+  margin-left: auto;
+  color: rgba(246, 240, 224, 0.32);
+  text-transform: none;
+  letter-spacing: 0.06em;
+}
+
+/* ============================================== chat lock strip (signed out) */
+
+/* Sits over the chat composer instead of inside it. Injecting a node into the
+ * chat DOM would fight the panel's grid; a fixed strip pinned to the panel's
+ * own --chat-width does not touch chat markup or chat CSS at all. */
+#rw-chat-lock {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  width: var(--chat-width, 620px);
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 18px 20px;
+  border-top: 2px solid #111214;
+  background: linear-gradient(180deg, rgba(30, 31, 34, 0.86) 0%, #1e1f22 42%);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 -14px 26px rgba(0, 0, 0, 0.4);
+}
+
+#rw-chat-lock[hidden] { display: none !important; }
+html[data-chat-collapsed="true"] #rw-chat-lock { display: none !important; }
+
+.rw-lock-glyph { width: 34px; height: 34px; display: block; }
+
+.rw-lock-copy { display: grid; gap: 3px; min-width: 0; }
+
+.rw-lock-title {
+  font: 700 13px/1.2 Inter, system-ui, sans-serif;
+  color: #f2f3f5;
+}
+
+.rw-lock-sub {
+  font: 400 11.5px/1.35 Inter, system-ui, sans-serif;
+  color: #949ba4;
+}
+
+#rw-chat-lock .rw-discord .rw-face { padding: 9px 13px 10px; font-size: 11px; }
+
+/* ==================================================================== modal */
+
+.rw-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.rw-modal[hidden] { display: none !important; }
+
+.rw-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 6, 0.74);
+  backdrop-filter: blur(6px);
+  animation: rw-fade 0.16s ease;
+}
+
+.rw-modal-card {
+  position: relative;
+  width: min(430px, 100%);
+  padding: 30px 30px 26px;
+  border: var(--rw-rail) solid var(--rw-ink);
+  background-color: #1b2621;
+  background-image:
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    linear-gradient(var(--rw-ink), var(--rw-ink)),
+    linear-gradient(180deg, rgba(200, 232, 205, 0.11), rgba(0, 0, 0, 0.24));
+  background-repeat: no-repeat;
+  background-position: 0 0, 100% 0, 0 100%, 100% 100%, 0 0;
+  background-size: 9px 9px, 9px 9px, 9px 9px, 9px 9px, 100% 100%;
+  box-shadow:
+    inset 0 3px 0 rgba(200, 232, 205, 0.2),
+    0 10px 0 0 #0d1512,
+    0 10px 0 var(--rw-rail) var(--rw-ink),
+    0 34px 70px rgba(0, 0, 0, 0.62);
+  text-align: center;
+  animation: rw-pop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.rw-modal-glyph { width: 62px; height: 62px; margin: 0 auto 16px; display: block; }
+
+.rw-modal-card h2 {
+  margin: 0 0 10px;
+  font: 800 17px/1.3 Inter, system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rw-cream);
+}
+
+.rw-modal-card p {
+  margin: 0 0 22px;
+  font: 400 14px/1.6 Inter, system-ui, sans-serif;
+  color: rgba(246, 240, 224, 0.68);
+}
+
+.rw-modal-actions { display: grid; gap: 14px; justify-items: center; }
+.rw-modal-actions .rw-slab { width: auto; }
+
+.rw-modal-actions .rw-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 18px 12px;
+  font: 800 12px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.rw-modal-actions svg { width: 18px; height: 18px; display: block; flex: none; }
+
+@keyframes rw-fade { from { opacity: 0; } }
+@keyframes rw-pop { from { opacity: 0; transform: translateY(14px); } }
+
+/* ================================================= in-game home button ==== */
+
+/* Same voxel slab as the menu buttons so leaving the world feels like part of
+ * the same object language, just scaled down to HUD size. */
+#rw-menu-button {
+  --face: #2c3d36;
+  --side: #131d19;
+  --edge: rgba(180, 214, 187, 0.26);
+  --sheen: linear-gradient(180deg, rgba(200, 232, 205, 0.16) 0%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.3) 100%);
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 40;
+  width: auto;
+  color: var(--rw-cream);
+}
+
+#rw-menu-button[hidden] { display: none !important; }
+
+#rw-menu-button .rw-face {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 15px 10px 11px;
+  font: 800 11px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 2px 0 var(--edge),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.28),
+    0 5px 0 0 var(--side),
+    0 5px 0 var(--rw-rail) var(--rw-ink),
+    0 12px 20px rgba(0, 0, 0, 0.45);
+}
+
+#rw-menu-button:hover .rw-face,
+#rw-menu-button:focus-visible .rw-face {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 2px 0 var(--edge),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.28),
+    0 7px 0 0 var(--side),
+    0 7px 0 var(--rw-rail) var(--rw-ink),
+    0 16px 26px rgba(0, 0, 0, 0.5);
+}
+
+#rw-menu-button:active .rw-face {
+  transform: translateY(5px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
+    0 0 0 0 var(--side),
+    0 0 0 var(--rw-rail) var(--rw-ink),
+    0 4px 8px rgba(0, 0, 0, 0.42);
+}
+
+.rw-menu-glyph { width: 20px; height: 20px; display: block; flex: none; }
+.rw-menu-glyph svg { width: 100%; height: 100%; display: block; }
+
+@media (max-width: 560px) {
+  #rw-menu-button { top: 10px; left: 10px; }
+  #rw-menu-button .rw-face { padding: 8px 12px 9px 9px; font-size: 10px; }
+}
+
+/* ================================================================ responsive */
+
+@media (max-width: 1180px) {
+  .rw-stage { padding: 22px 26px 22px 30px; }
+  .rw-card .rw-face { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 16px; padding: 17px 18px 18px; }
+  .rw-card-glyph { width: 46px; height: 46px; }
+  .rw-card-title { font-size: 18px; }
+}
+
+@media (max-width: 900px) {
+  .rw-stage { padding-right: 30px; }
+  html[data-chat-collapsed="true"] .rw-stage { padding-right: 78px; }
+  .rw-body { gap: 22px; }
+  .rw-servers { gap: 20px; }
+  .rw-wordmark { width: min(100%, 400px); }
+  .rw-lede p { font-size: 14.5px; }
+  .rw-card-meta { display: none; }
+  .rw-hint { display: none; }
+  #rw-chat-lock { width: 100vw; }
+}
+
+@media (max-width: 560px) {
+  .rw-stage { padding: 16px 16px 18px; gap: 12px; }
+  .rw-top { flex-wrap: wrap; }
+  .rw-card-title { font-size: 16px; letter-spacing: 0.08em; }
+  .rw-card-sub { font-size: 11.5px; }
+  .rw-modal-card { padding: 24px 20px 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #home, .rw-stage, .rw-face { transition: none !important; }
+  .rw-modal-backdrop, .rw-modal-card { animation: none !important; }
+}
