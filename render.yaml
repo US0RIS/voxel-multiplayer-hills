@@ -20,7 +20,7 @@ services:
       - key: DISCORD_REDIRECT_URI
         value: "https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord/callback"
       - key: AUTH_REQUIRED
-        value: "0"
+        value: "1"
       - key: DISCORD_CLIENT_ID
         sync: false
       - key: DISCORD_CLIENT_SECRET
