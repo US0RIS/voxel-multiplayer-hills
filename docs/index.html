@@ -8,24 +8,120 @@
   <title>Ridgewood — Early Alpha</title>
   <link rel="stylesheet" href="styles.css?v=4.3.2" />
   <link rel="stylesheet" href="discord-chat-v4.3.1.css?v=4.3.2" />
-  <link rel="stylesheet" href="auth-v0.4.2.css?v=0.4.2" />
+  <link rel="stylesheet" href="home-v0.5.0.css?v=0.5.0" />
 </head>
 <body>
-  <section id="auth-screen" aria-label="Discord sign in">
-    <div class="auth-card">
-      <div class="auth-mark" aria-hidden="true">R</div>
-      <h1>Ridgewood</h1>
-      <p class="auth-kicker">v0.4.2 · Early Alpha</p>
-      <p class="auth-copy">Sign in with Discord to enter the shared voxel world and use world chat.</p>
-      <a id="auth-discord-login" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord">
-        <span class="auth-discord-icon" aria-hidden="true">◉</span>
-        <span>Continue with Discord</span>
-      </a>
-      <p id="auth-status">Sign in to enter Ridgewood.</p>
-      <p class="auth-fine-print">Ridgewood receives your Discord identity and avatar. It cannot read or send Discord messages.</p>
+  <!-- ============================================================ home ==== -->
+  <section id="home" data-state="guest" aria-label="Ridgewood home">
+    <canvas id="home-scape" aria-hidden="true"></canvas>
+    <div class="rw-grain" aria-hidden="true"></div>
+    <div class="rw-veil" aria-hidden="true"></div>
+
+    <div class="rw-stage">
+      <header class="rw-top">
+        <div class="rw-brand">
+          <span id="home-brand-cube" class="rw-brand-cube" aria-hidden="true"></span>
+          <span class="rw-brand-name">Ridgewood</span>
+          <span class="rw-chip">v0.4.2 alpha</span>
+        </div>
+
+        <div class="rw-account">
+          <a id="home-login" class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord">
+            <span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Continue with Discord</span></span>
+          </a>
+          <div id="home-identity" class="rw-identity" hidden>
+            <img id="home-avatar" class="rw-avatar" alt="" width="32" height="32" />
+            <span class="rw-identity-text">
+              <span id="home-username" class="rw-identity-name">Adventurer</span>
+              <span class="rw-identity-role">Signed in · Discord</span>
+            </span>
+            <button id="home-logout" class="rw-ghost" type="button">Sign out</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="rw-body">
+        <div id="home-wordmark" class="rw-wordmark"></div>
+
+        <div class="rw-lede">
+          <span class="rw-rule">Early alpha</span>
+          <p>A shared voxel valley you can live in. Claim a plot on the ridge, build with your friends, trade at the market, and keep talking in world chat while you do it.</p>
+        </div>
+
+        <div class="rw-servers">
+          <button id="home-join-public" class="rw-slab rw-card rw-card--public" type="button">
+            <span class="rw-face">
+              <span id="home-public-glyph" class="rw-card-glyph" aria-hidden="true"></span>
+              <span class="rw-card-text">
+                <span class="rw-card-title">Public Server</span>
+                <span class="rw-card-sub">Ridgewood Main — the persistent world everyone shares.</span>
+              </span>
+              <span class="rw-card-meta">
+                <span class="rw-count"><span class="rw-dot" aria-hidden="true"></span><span id="home-public-meta">Open world</span></span>
+                <span class="rw-card-arrow" aria-hidden="true">▸ Play</span>
+              </span>
+            </span>
+          </button>
+
+          <button id="home-join-private" class="rw-slab rw-card rw-card--private" type="button">
+            <span class="rw-face">
+              <span id="home-private-glyph" class="rw-card-glyph" aria-hidden="true"></span>
+              <span class="rw-card-text">
+                <span class="rw-card-title">Private Server</span>
+                <span class="rw-card-sub">Join a friend's world with an invite code.</span>
+              </span>
+              <span class="rw-card-meta">
+                <span class="rw-count">Soon</span>
+                <span class="rw-card-arrow" aria-hidden="true">▸ Enter code</span>
+              </span>
+            </span>
+          </button>
+        </div>
+      </main>
+
+      <footer class="rw-foot">
+        <span id="home-status" class="rw-status" data-state="checking">
+          <span class="rw-dot" aria-hidden="true"></span><span id="home-status-text">Checking server…</span>
+        </span>
+        <span><strong>Build 4.3.0</strong> · world seed 4102026</span>
+        <span class="rw-hint">Ridgewood receives your Discord name and avatar. It cannot read or send Discord messages.</span>
+      </footer>
     </div>
   </section>
 
+  <!-- ============================================================ modal ==== -->
+  <div id="rw-modal" class="rw-modal" hidden>
+    <div class="rw-modal-backdrop"></div>
+    <div id="rw-modal-card" class="rw-modal-card" role="dialog" aria-modal="true" aria-labelledby="rw-modal-title">
+      <div id="rw-modal-glyph" class="rw-modal-glyph" aria-hidden="true"></div>
+      <h2 id="rw-modal-title"></h2>
+      <p id="rw-modal-body"></p>
+      <div id="rw-modal-actions" class="rw-modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- ================================================= chat lock (guests) == -->
+  <div id="rw-chat-lock" hidden>
+    <span id="rw-lock-glyph" class="rw-lock-glyph" aria-hidden="true"></span>
+    <span class="rw-lock-copy">
+      <span class="rw-lock-title">World chat is locked</span>
+      <span class="rw-lock-sub">Log in with Discord in order to use this feature.</span>
+    </span>
+    <a class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord">
+      <span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Log in</span></span>
+    </a>
+  </div>
+
+  <button id="rw-menu-button" class="rw-slab" type="button" hidden aria-label="Back to the home screen" title="Back to the home screen">
+    <span class="rw-face">
+      <span id="rw-menu-glyph" class="rw-menu-glyph" aria-hidden="true"></span>
+      <span>Home</span>
+    </span>
+  </button>
+
+  <!-- #game keeps its real size at all times: the home screen simply covers it.
+       Hiding it would collapse the canvas to 0x0 and the renderer only resizes
+       on window resize events. -->
   <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.4.2 alpha">
     <canvas id="canvas" tabindex="0"></canvas>
   </main>
@@ -38,7 +134,7 @@
       <div class="channel-mark" aria-hidden="true">#</div>
       <div class="chat-title-block">
         <strong>world-chat</strong>
-        <span id="chat-connection" data-state="connecting">Waiting for sign in…</span>
+        <span id="chat-connection" data-state="connecting">Connecting…</span>
       </div>
       <div class="chat-header-actions">
         <button id="chat-pins-toggle" class="icon-button" type="button" aria-label="Pinned messages" title="Pinned messages (Ctrl+Shift+P)">
@@ -152,12 +248,12 @@
 
   <section id="chat-toasts" class="chat-toasts" aria-label="Chat notifications" aria-live="polite"></section>
 
-  <div id="loading" role="status">
+  <div id="loading" role="status" hidden>
     <div class="loader"></div>
-    <div id="loading-text">Waiting for authentication…</div>
+    <div id="loading-text">Dropping you into the valley…</div>
   </div>
 
-  <div id="build-badge" aria-live="polite">
+  <div id="build-badge" aria-live="polite" hidden>
     <strong>RIDGEWOOD · v0.4.2 ALPHA</strong>
     <span id="network-label">waiting for sign in…</span>
     <span id="player-label">players unavailable</span>
@@ -165,7 +261,7 @@
     <span id="chunk-label">chunk loading…</span>
   </div>
 
-  <div id="help" aria-hidden="true">
+  <div id="help" aria-hidden="true" hidden>
     <span><kbd>WASD</kbd> / <kbd>Arrows</kbd> move</span>
     <span><kbd>Enter</kbd> chat</span>
     <span><kbd>Scroll</kbd> zoom</span>
@@ -178,7 +274,8 @@
   </div>
 
   <script src="config.js?v=0.4.2-auth"></script>
+  <script src="home-v0.5.0.js?v=0.5.0"></script>
   <script src="chat-v4.3.0.js?v=4.3.2"></script>
-  <script src="auth-v0.4.2.js?v=0.4.2-auth"></script>
+  <script src="auth-v0.5.0.js?v=0.5.0"></script>
 </body>
 </html>
