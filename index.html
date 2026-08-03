@@ -3,13 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="refresh" content="0; url=./docs/" />
-  <title>Voxel Multiplayer Hills</title>
+  <title>Opening Ridgewood…</title>
   <script>
-    window.location.replace('./docs/');
+    const destination = new URL('./docs/', window.location.href);
+    destination.search = window.location.search;
+    destination.hash = window.location.hash;
+    window.location.replace(destination.href);
   </script>
 </head>
 <body>
-  <p>Opening <a href="./docs/">Voxel Multiplayer Hills</a>…</p>
+  <p>Opening <a id="continue" href="./docs/">Ridgewood</a>…</p>
+  <script>
+    const link = document.querySelector('#continue');
+    const target = new URL('./docs/', window.location.href);
+    target.search = window.location.search;
+    target.hash = window.location.hash;
+    link.href = target.href;
+  </script>
 </body>
 </html>
