@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: voxel-multiplayer-hills-410-server
+    runtime: python
+    plan: free
+    rootDir: server
+    autoDeployTrigger: off
+    buildCommand: echo "No build step required"
+    startCommand: python3 server.py
+    healthCheckPath: /health
+    envVars:
+      - key: WORLD_SEED
+        value: "4102026"
+      - key: MAX_PLAYERS
+        value: "8"

@@ -1,0 +1,14 @@
+{
+  "name": "voxel-world-chat-tests",
+  "private": true,
+  "type": "module",
+  "description": "Test suites for World Chat. Run `npm install` here first.",
+  "scripts": {
+    "test:ui": "node ui-test.mjs",
+    "test:e2e": "node e2e-test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "ws": "^8.16.0"
+  }
+}
