@@ -11,6 +11,7 @@
   const screen = document.querySelector('#auth-screen');
   const login = document.querySelector('#auth-discord-login');
   const status = document.querySelector('#auth-status');
+  let gameStarted = false;
 
   function setStatus(message, state = '') {
     if (!status) return;
@@ -48,15 +49,59 @@
     return payload?.authenticated ? payload.user : null;
   }
 
+  function installAuthenticatedWebSocket(token) {
+    if (window.__RIDGEWOOD_AUTH_SOCKET_INSTALLED__) return;
+    const NativeWebSocket = window.WebSocket;
+
+    function AuthenticatedWebSocket(url, protocols) {
+      const next = new URL(String(url), window.location.href);
+      const serverHost = new URL(AUTH_SERVER).host;
+      if (next.host === serverHost && !next.searchParams.has('token')) {
+        next.searchParams.set('token', token);
+      }
+      return protocols === undefined
+        ? new NativeWebSocket(next.toString())
+        : new NativeWebSocket(next.toString(), protocols);
+    }
+
+    AuthenticatedWebSocket.prototype = NativeWebSocket.prototype;
+    Object.defineProperties(AuthenticatedWebSocket, {
+      CONNECTING: { value: NativeWebSocket.CONNECTING },
+      OPEN: { value: NativeWebSocket.OPEN },
+      CLOSING: { value: NativeWebSocket.CLOSING },
+      CLOSED: { value: NativeWebSocket.CLOSED }
+    });
+
+    window.WebSocket = AuthenticatedWebSocket;
+    window.__RIDGEWOOD_AUTH_SOCKET_INSTALLED__ = true;
+  }
+
+  function startGameModule() {
+    if (gameStarted) return;
+    gameStarted = true;
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = 'game-loader-v4.3.0.js?v=0.4.2-auth';
+    script.onerror = () => {
+      gameStarted = false;
+      setStatus('The game module failed to load. Reload the page.', 'error');
+      screen?.removeAttribute('hidden');
+    };
+    document.body.append(script);
+  }
+
   function revealApplication(user) {
+    const token = localStorage.getItem(TOKEN_KEY) || '';
+    installAuthenticatedWebSocket(token);
     screen?.setAttribute('hidden', '');
     document.documentElement.dataset.authenticated = 'true';
     window.RIDGEWOOD_AUTH = Object.freeze({
-      token: localStorage.getItem(TOKEN_KEY) || '',
+      token,
       user: user || null,
       serverUrl: AUTH_SERVER
     });
     window.dispatchEvent(new CustomEvent('ridgewood:auth-ready', { detail: window.RIDGEWOOD_AUTH }));
+    startGameModule();
   }
 
   function showLogin(message = 'Sign in to enter Ridgewood.') {
