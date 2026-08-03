@@ -96,23 +96,41 @@ def build(check_only: bool = False) -> int:
         for index, part in enumerate(parts, start=1):
             (parts_dir / f"part{index:02d}.b64").write_text(part, encoding="ascii")
         if target.get("loader"):
-            sync_loader(target["loader"], len(parts))
+            sync_loader(target["loader"], len(parts), raw)
         digest = hashlib.sha256(raw).hexdigest()[:12]
         print(f"✓ {target['name']}: {len(parts)} parts, {len(raw):,} bytes, sha256:{digest}")
     return changed
 
 
-def sync_loader(loader: Path, count: int) -> None:
-    """Keep the browser loader's PART_COUNT in step with the generated parts."""
+def sync_loader(loader: Path, count: int, raw: bytes) -> None:
+    """Stamp the browser loader with the part count and a content fingerprint.
+
+    The fingerprint is what busts caches. A static version string does not: if
+    the module changes but the version does not, a browser or CDN can serve a
+    mix of cached and fresh parts. Part boundaries move whenever the source
+    changes, so that mix concatenates into gibberish and the module dies with an
+    unrelated-looking syntax error. Hashing the content guarantees new URLs.
+    """
     if not loader.exists():
         raise SystemExit(f"Missing loader file: {loader}")
+    digest = hashlib.sha256(raw).hexdigest()
     text = loader.read_text(encoding="utf-8")
-    updated = re.sub(r"const PART_COUNT = \d+;", f"const PART_COUNT = {count};", text, count=1)
-    if updated == text and f"const PART_COUNT = {count};" not in text:
-        raise SystemExit(f"Could not update PART_COUNT in {loader}")
-    if updated != text:
-        loader.write_text(updated, encoding="utf-8")
-        print(f"  · updated {loader.name} PART_COUNT to {count}")
+    original = text
+
+    replacements = [
+        (r"const BUILD_ID = '[^']*';", f"const BUILD_ID = '{digest[:16]}';"),
+        (r"const PART_COUNT = \d+;", f"const PART_COUNT = {count};"),
+        (r"const SOURCE_BYTES = \d+;", f"const SOURCE_BYTES = {len(raw)};"),
+        (r"const SOURCE_SHA256 = '[^']*';", f"const SOURCE_SHA256 = '{digest}';"),
+    ]
+    for pattern, replacement in replacements:
+        text, changed = re.subn(pattern, replacement, text, count=1)
+        if not changed:
+            raise SystemExit(f"Could not update `{pattern}` in {loader}")
+
+    if text != original:
+        loader.write_text(text, encoding="utf-8")
+        print(f"  · stamped {loader.name}: {count} parts, build {digest[:16]}")
 
 
 if __name__ == "__main__":
