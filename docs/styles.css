@@ -1,0 +1,127 @@
+/* Voxel Multiplayer Hills — game chrome only.
+ *
+ * All chat styling lives in discord-chat-v4.3.0.css. Chat rules used to live
+ * here too and the two stylesheets fought: this file's
+ * `.chat-composer { grid-template-columns: minmax(0,1fr) auto }` gave the help
+ * text its own column and squeezed the message box to one character wide.
+ * Keep chat styles out of this file.
+ */
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f5f7f2;
+  background: #080b0a;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #game {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: radial-gradient(circle at 50% 35%, #182019 0%, #0b100d 48%, #050706 100%);
+}
+
+button, input, textarea { font: inherit; }
+button { color: inherit; }
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+[hidden] { display: none !important; }
+
+#loading,
+#error {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  text-align: center;
+  background: rgba(5, 8, 6, 0.86);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  letter-spacing: 0.01em;
+}
+
+#loading.hidden { display: none; }
+
+.loader {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto;
+  border: 3px solid rgba(255,255,255,0.18);
+  border-top-color: rgba(255,255,255,0.95);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#error { padding: 30px; color: #ffe7e7; }
+#error span { max-width: 620px; color: rgba(255, 231, 231, 0.75); }
+
+#build-badge {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 20;
+  display: grid;
+  gap: 3px;
+  padding: 10px 13px;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 9px;
+  background: rgba(0,0,0,.72);
+  color: #fff;
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.28);
+}
+#build-badge span { color: #b8d7a4; font-weight: 500; letter-spacing: 0; }
+#network-label[data-state="online"] { color: #b9f0a1; }
+#network-label[data-state="connecting"] { color: #f0d99c; }
+#network-label[data-state="offline"] { color: #ffaaa0; }
+
+#help {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 5;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 13px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(5,8,6,0.58);
+  color: rgba(255,255,255,0.72);
+  backdrop-filter: blur(7px);
+  font-size: 11px;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+kbd { display: inline-block; min-width: 22px; padding: 2px 5px; border: 1px solid rgba(255,255,255,0.18); border-bottom-color: rgba(255,255,255,0.34); border-radius: 5px; background: rgba(255,255,255,0.08); color: white; font: inherit; font-size: 10px; }@media (max-width: 900px) {
+  :root { }
+  #build-badge { font-size: 10px; }
+}
+@media (max-width: 650px) {
+  :root { }
+  #build-badge { top: 8px; right: 8px; padding: 7px 8px; font-size: 8px; opacity: 0.72; }
+  #help { width: calc(100% - 20px); bottom: 8px; justify-content: center; flex-wrap: wrap; gap: 6px 10px; font-size: 9px; }
+}
+@media (max-width: 480px) {
+  :root { }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
