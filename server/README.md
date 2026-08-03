@@ -1,15 +1,11 @@
-# Multiplayer backend
+# Multiplayer + Chat Backend v4.2.0
 
-Start locally:
-
-```bash
-PORT=8131 python3 server.py
-```
+Standard-library Python WebSocket server for movement and World Chat.
 
 Endpoints:
 
-- `GET /` — status text
-- `GET /health` — JSON health response
-- `WebSocket /ws` — multiplayer connection
+- `GET /health` — health/status JSON
+- `GET /` — human-readable status
+- `WS /ws` — shared movement and chat protocol
 
-No third-party Python packages are required.
+The server keeps the last 500 chat messages in memory and rate-limits each player to two messages per second.
