@@ -11,6 +11,7 @@ import base64
 import binascii
 from pathlib import Path
 
+import auth_env
 import auth
 
 
