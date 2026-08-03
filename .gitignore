@@ -1,0 +1,13 @@
+# Local/runtime state
+server/ridgewood.db
+server/ridgewood.db-shm
+server/ridgewood.db-wal
+server/chat-state.json
+server/*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+
+# OS/editor
+.DS_Store
