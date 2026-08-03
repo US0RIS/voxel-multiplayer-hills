@@ -13,3 +13,15 @@ services:
         value: "4102026"
       - key: MAX_PLAYERS
         value: "8"
+      - key: GAME_URL
+        value: "https://us0ris.github.io/voxel-multiplayer-hills/"
+      - key: SERVER_URL
+        value: "https://voxel-multiplayer-hills-410-server.onrender.com"
+      - key: DISCORD_REDIRECT_URI
+        value: "https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord/callback"
+      - key: AUTH_REQUIRED
+        value: "0"
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
