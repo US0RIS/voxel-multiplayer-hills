@@ -4,13 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Voxel Multiplayer Hills v4.3.2 World Chat" />
-  <title>Voxel Multiplayer Hills — World Chat</title>
+  <meta name="description" content="Ridgewood v0.4.2 alpha" />
+  <title>Ridgewood — Early Alpha</title>
   <link rel="stylesheet" href="styles.css?v=4.3.2" />
   <link rel="stylesheet" href="discord-chat-v4.3.1.css?v=4.3.2" />
+  <link rel="stylesheet" href="auth-v0.4.2.css?v=0.4.2" />
 </head>
 <body>
-  <main id="game" aria-label="Voxel multiplayer rolling hills version 4.3.2">
+  <section id="auth-screen" aria-label="Discord sign in">
+    <div class="auth-card">
+      <div class="auth-mark" aria-hidden="true">R</div>
+      <h1>Ridgewood</h1>
+      <p class="auth-kicker">v0.4.2 · Early Alpha</p>
+      <p class="auth-copy">Sign in with Discord to enter the shared voxel world and use world chat.</p>
+      <a id="auth-discord-login" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord">
+        <span class="auth-discord-icon" aria-hidden="true">◉</span>
+        <span>Continue with Discord</span>
+      </a>
+      <p id="auth-status">Sign in to enter Ridgewood.</p>
+      <p class="auth-fine-print">Ridgewood receives your Discord identity and avatar. It cannot read or send Discord messages.</p>
+    </div>
+  </section>
+
+  <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.4.2 alpha">
     <canvas id="canvas" tabindex="0"></canvas>
   </main>
 
@@ -22,7 +38,7 @@
       <div class="channel-mark" aria-hidden="true">#</div>
       <div class="chat-title-block">
         <strong>world-chat</strong>
-        <span id="chat-connection" data-state="connecting">Connecting to the world…</span>
+        <span id="chat-connection" data-state="connecting">Waiting for sign in…</span>
       </div>
       <div class="chat-header-actions">
         <button id="chat-pins-toggle" class="icon-button" type="button" aria-label="Pinned messages" title="Pinned messages (Ctrl+Shift+P)">
@@ -50,7 +66,7 @@
           <div id="chat-intro" class="channel-intro">
             <div class="channel-intro-icon" aria-hidden="true">#</div>
             <h1>Welcome to #world-chat</h1>
-            <p>This is the shared conversation for everyone in the voxel world. Chat, share locations, react, reply, and find other players. Type <code>/help</code> for commands.</p>
+            <p>This is the shared conversation for everyone in Ridgewood. Chat, share locations, react, reply, and find other players. Type <code>/help</code> for commands.</p>
           </div>
           <div id="chat-message-list" class="chat-message-list" role="log" aria-live="polite" aria-relevant="additions"></div>
         </div>
@@ -71,7 +87,7 @@
           <div id="chat-composer-shell" class="composer-shell" data-offline="true">
             <div id="chat-attach" class="composer-plus" title="Attachments are not available yet" aria-hidden="true">+</div>
             <div class="composer-input-wrap">
-              <textarea id="chat-input" rows="1" maxlength="2000" autocomplete="off" spellcheck="true" placeholder="Connecting chat…" aria-label="Chat message"></textarea>
+              <textarea id="chat-input" rows="1" maxlength="2000" autocomplete="off" spellcheck="true" placeholder="Sign in to connect…" aria-label="Chat message"></textarea>
               <span id="chat-char-count" data-limit="normal"></span>
             </div>
             <button id="chat-emoji-button" class="icon-button composer-emoji" type="button" aria-label="Open emoji picker" title="Emoji">😊</button>
@@ -138,13 +154,13 @@
 
   <div id="loading" role="status">
     <div class="loader"></div>
-    <div id="loading-text">Starting…</div>
+    <div id="loading-text">Waiting for authentication…</div>
   </div>
 
   <div id="build-badge" aria-live="polite">
-    <strong>MULTIPLAYER HILLS · v4.3.2</strong>
-    <span id="network-label">connecting…</span>
-    <span id="player-label">players loading…</span>
+    <strong>RIDGEWOOD · v0.4.2 ALPHA</strong>
+    <span id="network-label">waiting for sign in…</span>
+    <span id="player-label">players unavailable</span>
     <span id="seed-label">seed loading…</span>
     <span id="chunk-label">chunk loading…</span>
   </div>
@@ -157,12 +173,12 @@
   </div>
 
   <div id="error" hidden>
-    <strong>Unable to start the prototype.</strong>
+    <strong>Unable to start Ridgewood.</strong>
     <span id="error-message"></span>
   </div>
 
-  <script src="config.js?v=4.3.2"></script>
+  <script src="config.js?v=0.4.2-auth"></script>
   <script src="chat-v4.3.0.js?v=4.3.2"></script>
-  <script type="module" src="game-loader-v4.3.0.js?v=4.3.2"></script>
+  <script src="auth-v0.4.2.js?v=0.4.2-auth"></script>
 </body>
 </html>
