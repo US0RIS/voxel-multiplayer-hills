@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the v4.1.0 frontend and multiplayer backend locally."""
+"""Run the v4.2.0 frontend and multiplayer backend locally."""
 from __future__ import annotations
 
 import os
@@ -65,9 +65,9 @@ def main() -> None:
         backend.wait(timeout=5)
         raise
 
-    url = f"http://localhost:{HTTP_PORT}/?version=4.1.0&t={int(time.time())}"
+    url = f"http://localhost:{HTTP_PORT}/?version=4.2.0&t={int(time.time())}"
     print("=" * 72)
-    print("VOXEL MULTIPLAYER HILLS v4.1.0 — LOCAL DEVELOPMENT")
+    print("VOXEL MULTIPLAYER HILLS v4.2.0 — LOCAL DEVELOPMENT")
     print(f"Game: {url}")
     print(f"Backend health: http://localhost:{WS_PORT}/health")
     print("Open the game in another tab to test multiplayer.")
