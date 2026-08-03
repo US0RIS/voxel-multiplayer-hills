@@ -158,7 +158,7 @@ queueMicrotask(() => window.dispatchEvent(new CustomEvent('voxel:bridge-ready', 
     `  window.addEventListener('keydown', (event) => {
     const target = event.target;
     const isTypingTarget = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable;
-    if (isTypingTarget || window.__voxelChatTyping) return;
+    if (isTypingTarget || window.__voxelChatTyping || window.__ridgewoodMenuOpen) return;
     if (movementKeys.has(event.code)) {`,
     'chat keyboard isolation'
   );
