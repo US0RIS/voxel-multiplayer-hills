@@ -9,22 +9,29 @@
     './chat-parts/part07.b64'
   ];
 
+  function decodePart(encoded) {
+    const binary = atob(encoded.replace(/\s+/g, ''));
+    return new TextDecoder().decode(
+      Uint8Array.from(binary, (character) => character.charCodeAt(0))
+    );
+  }
+
   Promise.all(parts.map(async (url) => {
-    const response = await fetch(`${url}?v=4.2.0`, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Chat module part failed to load (${response.status}): ${url}`);
-    return (await response.text()).trim();
+    const response = await fetch(`${url}?v=4.2.1`, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Chat module part failed to load (${response.status}): ${url}`);
+    }
+    return decodePart(await response.text());
   }))
-    .then((encodedParts) => {
-      const binary = atob(encodedParts.join(''));
-      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-      const source = new TextDecoder().decode(bytes);
-      (0, eval)(`${source}\n//# sourceURL=chat-v4.2.0-runtime.js`);
+    .then((sourceParts) => {
+      const source = sourceParts.join('');
+      (0, eval)(`${source}\n//# sourceURL=chat-v4.2.1-runtime.js`);
     })
     .catch((error) => {
-      console.error(error);
+      console.error('World Chat failed to initialize:', error);
       const connection = document.querySelector('#chat-connection');
       if (connection) {
-        connection.textContent = 'Chat failed to load';
+        connection.textContent = `Chat failed: ${error.message}`;
         connection.dataset.state = 'offline';
       }
     });
