@@ -4,6 +4,7 @@ services:
     runtime: python
     plan: free
     rootDir: server
+    autoDeployTrigger: off
     buildCommand: echo "No build step required"
     startCommand: python3 server.py
     healthCheckPath: /health
