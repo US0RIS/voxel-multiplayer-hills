@@ -28,3 +28,15 @@ jobs:
           node --check docs/home-v0.5.0.js
       - name: Confirm production branch remains untouched
         run: git diff --exit-code
+      - name: Package complete source tree
+        run: |
+          mkdir -p package/voxel-multiplayer-hills-v0.5.0-alpha
+          git archive HEAD | tar -x -C package/voxel-multiplayer-hills-v0.5.0-alpha
+      - name: Upload complete repository ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxel-multiplayer-hills-v0.5.0-alpha
+          path: package/voxel-multiplayer-hills-v0.5.0-alpha
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
