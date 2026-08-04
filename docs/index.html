@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Ridgewood v0.4.2 alpha" />
+  <meta name="description" content="Ridgewood v0.5.1 alpha" />
   <title>Ridgewood — Early Alpha</title>
   <link rel="stylesheet" href="styles.css?v=4.3.2" />
   <link rel="stylesheet" href="discord-chat-v4.3.1.css?v=4.3.2" />
-  <link rel="stylesheet" href="home-v0.5.0.css?v=0.5.0" />
+  <link rel="stylesheet" href="home-v0.5.0.css?v=0.5.1" />
 </head>
 <body>
   <!-- ============================================================ home ==== -->
@@ -22,7 +22,7 @@
         <div class="rw-brand">
           <span id="home-brand-cube" class="rw-brand-cube" aria-hidden="true"></span>
           <span class="rw-brand-name">Ridgewood</span>
-          <span class="rw-chip">v0.4.2 alpha</span>
+          <span class="rw-chip">v0.5.1 alpha</span>
         </div>
 
         <div class="rw-account">
@@ -83,7 +83,7 @@
         <span id="home-status" class="rw-status" data-state="checking">
           <span class="rw-dot" aria-hidden="true"></span><span id="home-status-text">Checking server…</span>
         </span>
-        <span><strong>Build 4.3.0</strong> · world seed 4102026</span>
+        <span><strong>Build 0.5.1</strong> · world seed 4102026</span>
         <span class="rw-hint">Ridgewood receives your Discord name and avatar. It cannot read or send Discord messages.</span>
       </footer>
     </div>
@@ -122,7 +122,7 @@
   <!-- #game keeps its real size at all times: the home screen simply covers it.
        Hiding it would collapse the canvas to 0x0 and the renderer only resizes
        on window resize events. -->
-  <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.4.2 alpha">
+  <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.5.1 alpha">
     <canvas id="canvas" tabindex="0"></canvas>
   </main>
 
@@ -254,7 +254,7 @@
   </div>
 
   <div id="build-badge" aria-live="polite" hidden>
-    <strong>RIDGEWOOD · v0.4.2 ALPHA</strong>
+    <strong>RIDGEWOOD · v0.5.1 ALPHA</strong>
     <span id="network-label">waiting for sign in…</span>
     <span id="player-label">players unavailable</span>
     <span id="seed-label">seed loading…</span>
@@ -274,8 +274,8 @@
   </div>
 
   <script src="config.js?v=0.4.2-auth"></script>
-  <script src="home-v0.5.0.js?v=0.5.0"></script>
+  <script src="home-v0.5.0.js?v=0.5.1"></script>
   <script src="chat-v4.3.0.js?v=4.3.2"></script>
-  <script src="auth-v0.5.0.js?v=0.5.0"></script>
+  <script src="auth-v0.5.0.js?v=0.5.1"></script>
 </body>
 </html>
