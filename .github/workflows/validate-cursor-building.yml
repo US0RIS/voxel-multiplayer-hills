@@ -1,0 +1,74 @@
+name: Validate cursor building
+
+on:
+  push:
+    branches:
+      - feature/cursor-building-chunk-tools-v0.5.1
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate persistent server runtime
+        run: python3 tools/validate-persistent-world.py
+      - name: Validate browser source syntax
+        run: |
+          node --check docs/game-loader-v4.3.0.js
+          node --check docs/auth-v0.5.0.js
+          node --check docs/home-v0.5.0.js
+      - name: Apply loader patches and validate generated renderer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          loader = Path('docs/game-loader-v4.3.0.js').read_text()
+          renderer = Path('docs/multiplayer-hills-v4.1.0.js').read_text()
+          pattern = re.compile(
+              r"source = replaceRequired\(\s*source,\s*(`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'),\s*(`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'),\s*'([^']+)'\s*\);",
+              re.S,
+          )
+
+          def decode(value):
+              if value.startswith('`'):
+                  text = value[1:-1]
+                  text = text.replace('\\`', '`')
+                  text = text.replace('\\${', '${')
+                  text = text.replace('\\n', '\n')
+                  return text
+              text = value[1:-1]
+              return bytes(text, 'utf-8').decode('unicode_escape')
+
+          count = 0
+          for match in pattern.finditer(loader):
+              search = decode(match.group(1))
+              replacement = decode(match.group(2))
+              label = match.group(3)
+              if search not in renderer:
+                  raise SystemExit(f'Missing renderer patch target: {label}')
+              renderer = renderer.replace(search, replacement, 1)
+              count += 1
+          if count < 10:
+              raise SystemExit(f'Only applied {count} renderer patches')
+          Path('/tmp/ridgewood-generated.mjs').write_text(renderer)
+          print(f'Applied {count} renderer patches')
+          PY
+          node --check /tmp/ridgewood-generated.mjs
+      - name: Confirm required features
+        run: |
+          grep -q "function raycastWorld" docs/game-loader-v4.3.0.js
+          grep -q "function renderWorldInteractionOverlay" docs/game-loader-v4.3.0.js
+          grep -q "'/showchunks'" docs/game-loader-v4.3.0.js
+          grep -q "'/mychunks'" docs/game-loader-v4.3.0.js
+          grep -q "world-block-loader" docs/world-v0.5.0.css
+          grep -q "data-collapsed" docs/world-v0.5.0.css
