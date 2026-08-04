@@ -1,0 +1,42 @@
+name: Validate persistent world
+
+on:
+  push:
+    branches:
+      - feature/persistent-world-v0.5.0
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Python runtime patches
+        run: python3 tools/validate-persistent-world.py
+      - name: Validate browser JavaScript syntax
+        run: |
+          node --check docs/game-loader-v4.3.0.js
+          node --check docs/auth-v0.5.0.js
+          node --check docs/home-v0.5.0.js
+      - name: Confirm production branch remains untouched
+        run: git diff --exit-code
+      - name: Package complete source tree
+        run: |
+          mkdir -p package/voxel-multiplayer-hills-v0.5.0-alpha
+          git archive HEAD | tar -x -C package/voxel-multiplayer-hills-v0.5.0-alpha
+      - name: Upload complete repository ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxel-multiplayer-hills-v0.5.0-alpha
+          path: package/voxel-multiplayer-hills-v0.5.0-alpha
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

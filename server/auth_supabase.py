@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""Discord OAuth with durable Supabase users and sessions."""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import secrets
+import threading
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
+
+from supabase_store import STORE, SupabaseError
+
+
+@dataclass(frozen=True)
+class AuthResponse:
+    status: int
+    body: dict[str, Any]
+    headers: dict[str, str]
+
+
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "").strip()
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
+GAME_URL = os.getenv("GAME_URL", "https://us0ris.github.io/voxel-multiplayer-hills/").strip()
+SERVER_URL = os.getenv("SERVER_URL", "https://voxel-multiplayer-hills-410-server.onrender.com").strip().rstrip("/")
+REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", f"{SERVER_URL}/auth/discord/callback").strip()
+AUTH_REQUIRED = os.getenv("AUTH_REQUIRED", "1").lower() in {"1", "true", "yes", "on"}
+SESSION_TTL = max(3600, int(os.getenv("AUTH_SESSION_TTL_SECONDS", str(30 * 86400))))
+STATE_TTL = max(60, int(os.getenv("AUTH_STATE_TTL_SECONDS", "600")))
+CACHE_TTL = max(15, min(600, int(os.getenv("AUTH_SESSION_CACHE_SECONDS", "120"))))
+COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "voxel_session")
+TIMEOUT = max(2.0, float(os.getenv("DISCORD_HTTP_TIMEOUT_SECONDS", "10")))
+
+_LOCK = threading.RLock()
+_STATES: dict[str, float] = {}
+_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+
+
+def _hash(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _iso_after(seconds: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
+
+
+def configured() -> bool:
+    return bool(DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET and REDIRECT_URI and STORE.ready)
+
+
+def handle_request(method: str, path: str, headers: dict[str, str], body: bytes, client_ip: str) -> Optional[AuthResponse]:
+    del body, client_ip
+    method = method.upper()
+    parsed = urllib.parse.urlsplit(path)
+    clean = parsed.path
+    query = headers.get("query_string", parsed.query)
+    if clean == "/auth/discord" and method == "GET":
+        return handle_discord_login()
+    if clean == "/auth/discord/callback" and method == "GET":
+        return handle_discord_callback(query)
+    if clean == "/auth/me" and method == "GET":
+        user = authenticate_session(extract_session_token(headers, query))
+        return _json(200, {"authenticated": True, "user": user}) if user else _json(401, {"authenticated": False, "error": "unauthorized"})
+    if clean == "/auth/logout" and method == "POST":
+        revoke_session(extract_session_token(headers, query))
+        return AuthResponse(204, {}, {"Set-Cookie": _expired_cookie(), "Cache-Control": "no-store"})
+    if clean == "/auth/status" and method == "GET":
+        return _json(200, {
+            "configured": configured(), "provider": "discord", "authRequired": AUTH_REQUIRED,
+            "storage": "supabase" if STORE.ready else "unavailable",
+            "redirectUri": REDIRECT_URI if configured() else None,
+        })
+    return None
+
+
+def handle_discord_login() -> AuthResponse:
+    if not configured():
+        return _json(503, {"error": "auth_not_configured"})
+    state = secrets.token_urlsafe(32)
+    with _LOCK:
+        _cleanup()
+        _STATES[_hash(state)] = time.time() + STATE_TTL
+    location = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode({
+        "client_id": DISCORD_CLIENT_ID, "redirect_uri": REDIRECT_URI,
+        "response_type": "code", "scope": "identify", "state": state,
+    })
+    return AuthResponse(302, {}, {"Location": location, "Cache-Control": "no-store"})
+
+
+def handle_discord_callback(query: str) -> AuthResponse:
+    params = urllib.parse.parse_qs(query)
+    if params.get("error"):
+        return _redirect(error="discord_denied")
+    code = (params.get("code") or [""])[0]
+    state = (params.get("state") or [""])[0]
+    with _LOCK:
+        _cleanup()
+        expires = _STATES.pop(_hash(state), 0) if state else 0
+    if not code:
+        return _redirect(error="no_code")
+    if expires <= time.time():
+        return _redirect(error="invalid_state")
+    try:
+        token = _discord_post("/oauth2/token", {
+            "client_id": DISCORD_CLIENT_ID, "client_secret": DISCORD_CLIENT_SECRET,
+            "grant_type": "authorization_code", "code": code, "redirect_uri": REDIRECT_URI,
+        })["access_token"]
+        du = _discord_get("/users/@me", {"Authorization": f"Bearer {token}"})
+        username = str(du.get("global_name") or du.get("username") or "Discord Player")
+        avatar = str(du.get("avatar") or "")
+        avatar_url = f"https://cdn.discordapp.com/avatars/{du['id']}/{avatar}.webp?size=128" if avatar else ""
+        row = STORE.upsert_discord_user(
+            discord_id=str(du["id"]), discord_username=str(du.get("username") or username),
+            display_name=username, avatar_url=avatar_url,
+        )
+        raw_token = secrets.token_urlsafe(48)
+        token_hash = _hash(raw_token)
+        STORE.create_session(token_hash=token_hash, user_id=str(row["id"]), expires_at=_iso_after(SESSION_TTL))
+        user = _public_user(row, int(time.time()) + SESSION_TTL)
+        with _LOCK:
+            _CACHE[token_hash] = (time.time() + CACHE_TTL, user)
+        return _redirect(token=raw_token, username=user["username"], headers={"Set-Cookie": _cookie(raw_token)})
+    except (KeyError, ValueError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, SupabaseError) as exc:
+        print(f"Auth error: {type(exc).__name__}: {exc}", flush=True)
+        return _redirect(error="auth_failed")
+
+
+def extract_session_token(headers: dict[str, str], query: str = "") -> str:
+    auth_header = headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        return auth_header[7:].strip()
+    for item in headers.get("cookie", "").split(";"):
+        name, sep, value = item.strip().partition("=")
+        if sep and name == COOKIE_NAME:
+            return urllib.parse.unquote(value)
+    return (urllib.parse.parse_qs(query).get("token") or [""])[0] if query else ""
+
+
+def authenticate_session(raw_token: str) -> Optional[dict[str, Any]]:
+    if not raw_token or not STORE.ready:
+        return None
+    key = _hash(raw_token)
+    now = time.time()
+    with _LOCK:
+        cached = _CACHE.get(key)
+        if cached and cached[0] > now:
+            return dict(cached[1])
+        _CACHE.pop(key, None)
+    try:
+        session = STORE.get_session(key)
+        if not session:
+            return None
+        user = _public_user(session["user"], session.get("expires_at"))
+        with _LOCK:
+            _CACHE[key] = (now + CACHE_TTL, user)
+        try:
+            STORE.touch_session(key)
+        except SupabaseError:
+            pass
+        return dict(user)
+    except SupabaseError as exc:
+        print(f"Session lookup failed: {exc}", flush=True)
+        return None
+
+
+def revoke_session(raw_token: str) -> None:
+    if not raw_token:
+        return
+    key = _hash(raw_token)
+    with _LOCK:
+        _CACHE.pop(key, None)
+    try:
+        STORE.delete_session(key)
+    except SupabaseError as exc:
+        print(f"Session revoke failed: {exc}", flush=True)
+
+
+def websocket_user(headers: dict[str, str], query: str = "") -> Optional[dict[str, Any]]:
+    return authenticate_session(extract_session_token(headers, query))
+
+
+def safe_display_name(user: Optional[dict[str, Any]]) -> str:
+    raw = str((user or {}).get("username") or "Discord Player")
+    cleaned = "".join(c for c in raw if (c.isascii() and c.isalnum()) or c in " ._-")
+    return (" ".join(cleaned.split()).strip(" ._-") or "Discord Player")[:24]
+
+
+def _public_user(row: dict[str, Any], expires: Any) -> dict[str, Any]:
+    return {
+        "user_id": str(row["id"]), "discord_id": str(row.get("discord_id") or ""),
+        "username": str(row.get("display_name") or row.get("discord_username") or "Discord Player"),
+        "discord_username": str(row.get("discord_username") or ""),
+        "avatar_url": str(row.get("avatar_url") or ""), "coins": int(row.get("coins") or 0),
+        "expires_at": expires,
+    }
+
+
+def _cleanup() -> None:
+    now = time.time()
+    for key, expires in list(_STATES.items()):
+        if expires <= now: _STATES.pop(key, None)
+    for key, (expires, _) in list(_CACHE.items()):
+        if expires <= now: _CACHE.pop(key, None)
+
+
+def _discord_post(path: str, values: dict[str, str]) -> dict[str, Any]:
+    req = urllib.request.Request("https://discord.com/api/v10" + path,
+        data=urllib.parse.urlencode(values).encode(), method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "User-Agent": "Ridgewood/0.5.0"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
+        return json.loads(response.read())
+
+
+def _discord_get(path: str, headers: dict[str, str]) -> dict[str, Any]:
+    req = urllib.request.Request("https://discord.com/api/v10" + path, method="GET",
+        headers={**headers, "Accept": "application/json", "User-Agent": "Ridgewood/0.5.0"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
+        return json.loads(response.read())
+
+
+def _json(status: int, body: dict[str, Any]) -> AuthResponse:
+    return AuthResponse(status, body, {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"})
+
+
+def _redirect(*, token: str = "", username: str = "", error: str = "", headers: dict[str, str] | None = None) -> AuthResponse:
+    split = urllib.parse.urlsplit(GAME_URL)
+    fragment = {"auth_token": token, "username": username, "provider": "discord"} if token else {}
+    if error: fragment["auth_error"] = error
+    location = urllib.parse.urlunsplit((split.scheme, split.netloc, split.path, split.query, urllib.parse.urlencode(fragment)))
+    output = {"Location": location, "Cache-Control": "no-store"}
+    if headers: output.update(headers)
+    return AuthResponse(302, {}, output)
+
+
+def _cookie(token: str) -> str:
+    return f"{COOKIE_NAME}={urllib.parse.quote(token)}; Path=/; Max-Age={SESSION_TTL}; HttpOnly; Secure; SameSite=None"
+
+
+def _expired_cookie() -> str:
+    return f"{COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=None"
