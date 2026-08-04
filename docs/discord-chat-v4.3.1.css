@@ -1210,3 +1210,74 @@ textarea {
   #chat-collapsed-tab[data-unread="true"] .chat-tab-icon,
   .chat-typing[data-active="true"]::before { animation: none !important; }
 }
+
+/* ---------------------------------------------------------------- v0.8.0
+ * Staff prominence.
+ *
+ * Admin and moderator messages get a coloured rail, a tinted background and a
+ * role badge, so an announcement is visually distinct from ordinary chatter
+ * without changing the message layout or breaking grouping.
+ */
+
+.chat-role-badge {
+  background: var(--dc-brand) !important;
+  letter-spacing: 0.6px !important;
+  vertical-align: middle !important;
+}
+
+.chat-role-badge.is-admin {
+  background: linear-gradient(135deg, #f0b232, #e8843a) !important;
+  color: #241704 !important;
+  box-shadow: 0 0 0 1px rgba(240, 178, 50, 0.45) !important;
+}
+
+.chat-role-badge.is-moderator {
+  background: linear-gradient(135deg, #3ba55d, #2f8f7d) !important;
+  color: #04180f !important;
+  box-shadow: 0 0 0 1px rgba(59, 165, 93, 0.4) !important;
+}
+
+.chat-message[data-sender-role] {
+  position: relative !important;
+  border-radius: 0 4px 4px 0 !important;
+}
+
+.chat-message[data-sender-role]::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 3px !important;
+  border-radius: 3px !important;
+}
+
+.chat-message[data-sender-role="admin"] {
+  background: linear-gradient(90deg, rgba(240, 178, 50, 0.13), rgba(240, 178, 50, 0.02) 45%, transparent) !important;
+}
+
+.chat-message[data-sender-role="admin"]::before { background: #f0b232 !important; }
+
+.chat-message[data-sender-role="admin"] .chat-author {
+  color: #f0b232 !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 12px rgba(240, 178, 50, 0.35) !important;
+}
+
+.chat-message[data-sender-role="moderator"] {
+  background: linear-gradient(90deg, rgba(59, 165, 93, 0.11), rgba(59, 165, 93, 0.02) 45%, transparent) !important;
+}
+
+.chat-message[data-sender-role="moderator"]::before { background: #3ba55d !important; }
+
+.chat-message[data-sender-role="moderator"] .chat-author {
+  color: #4fc47a !important;
+  font-weight: 700 !important;
+}
+
+.chat-player[data-member-role="admin"] .player-details strong { color: #f0b232 !important; }
+.chat-player[data-member-role="moderator"] .player-details strong { color: #4fc47a !important; }
+
+.chat-player[data-member-role] .chat-role-badge {
+  font-size: 8px !important;
+  padding: 0 4px !important;
+  margin-left: 4px !important;
+}

@@ -39,6 +39,7 @@
       invalid_credentials: 'Incorrect username or password.',
       account_temporarily_locked: 'This account is temporarily locked after repeated failed attempts.',
       too_many_attempts: 'Too many login attempts. Try again later.',
+      account_banned: 'This account is banned.',
       registration_unavailable: 'Account creation is temporarily unavailable.',
       login_unavailable: 'Username login is temporarily unavailable.'
     };
@@ -179,6 +180,23 @@
   }
   async function validateSession(token) {
     const response = await fetch(`${AUTH_SERVER}/auth/me?token=${encodeURIComponent(token)}`, { cache: 'no-store', credentials: 'omit' });
+    if (response.status === 403) {
+      // The account is banned. Say so plainly instead of bouncing the player
+      // back to a login screen that will keep refusing them.
+      const payload = await response.json().catch(() => ({}));
+      const until = payload?.ban?.permanent
+        ? 'This ban does not expire.'
+        : payload?.ban?.until
+          ? `The ban lifts on ${new Date(payload.ban.until).toLocaleString()}.`
+          : '';
+      const reason = payload?.ban?.reason ? `Reason: ${payload.ban.reason}. ` : '';
+      const detail = `This account is banned. ${reason}${until}`.trim();
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+      showSignedOut();
+      window.RIDGEWOOD_HOME?.setStatus('offline', detail);
+      return { banned: true, detail };
+    }
     if (!response.ok) return null;
     const payload = await response.json();
     return payload?.authenticated ? payload.user : null;
@@ -201,7 +219,7 @@
     gameStarted = true;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = 'game-loader-v0.6.0.js?v=0.7.0';
+    script.src = 'game-loader-v0.8.0.js?v=0.8.0';
     script.onerror = () => { gameStarted = false; window.RIDGEWOOD_HOME?.setStatus('offline', 'Game module failed to load'); };
     document.body.append(script);
   }
@@ -255,6 +273,7 @@
     if (!token) { showSignedOut(); checkServer(); return; }
     try {
       const user = await validateSession(token);
+      if (user?.banned) return;
       if (!user) {
         localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
         showSignedOut(); checkServer(); return;
