@@ -4,280 +4,73 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Ridgewood v0.5.3 alpha" />
+  <meta name="description" content="Ridgewood v0.6.0 alpha" />
   <title>Ridgewood — Early Alpha</title>
   <link rel="stylesheet" href="styles.css?v=4.3.2" />
   <link rel="stylesheet" href="discord-chat-v4.3.1.css?v=4.3.2" />
   <link rel="stylesheet" href="home-v0.5.0.css?v=0.5.0" />
 </head>
 <body>
-  <!-- ============================================================ home ==== -->
   <section id="home" data-state="guest" aria-label="Ridgewood home">
     <canvas id="home-scape" aria-hidden="true"></canvas>
     <div class="rw-grain" aria-hidden="true"></div>
     <div class="rw-veil" aria-hidden="true"></div>
-
     <div class="rw-stage">
       <header class="rw-top">
-        <div class="rw-brand">
-          <span id="home-brand-cube" class="rw-brand-cube" aria-hidden="true"></span>
-          <span class="rw-brand-name">Ridgewood</span>
-          <span class="rw-chip">v0.5.3 alpha</span>
-        </div>
-
+        <div class="rw-brand"><span id="home-brand-cube" class="rw-brand-cube" aria-hidden="true"></span><span class="rw-brand-name">Ridgewood</span><span class="rw-chip">v0.6.0 alpha</span></div>
         <div class="rw-account">
-          <a id="home-login" class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord">
-            <span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Continue with Discord</span></span>
-          </a>
-          <div id="home-identity" class="rw-identity" hidden>
-            <img id="home-avatar" class="rw-avatar" alt="" width="32" height="32" />
-            <span class="rw-identity-text">
-              <span id="home-username" class="rw-identity-name">Adventurer</span>
-              <span class="rw-identity-role">Signed in · Discord</span>
-            </span>
-            <button id="home-logout" class="rw-ghost" type="button">Sign out</button>
-          </div>
+          <a id="home-login" class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord"><span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Continue with Discord</span></span></a>
+          <div id="home-identity" class="rw-identity" hidden><img id="home-avatar" class="rw-avatar" alt="" width="32" height="32" /><span class="rw-identity-text"><span id="home-username" class="rw-identity-name">Adventurer</span><span class="rw-identity-role">Signed in · Discord</span></span><button id="home-logout" class="rw-ghost" type="button">Sign out</button></div>
         </div>
       </header>
-
       <main class="rw-body">
         <div id="home-wordmark" class="rw-wordmark"></div>
-
-        <div class="rw-lede">
-          <span class="rw-rule">Early alpha</span>
-          <p>A shared voxel valley you can live in. Claim a plot on the ridge, build with your friends, trade at the market, and keep talking in world chat while you do it.</p>
-        </div>
-
+        <div class="rw-lede"><span class="rw-rule">Early alpha</span><p>A shared voxel valley you can live in. Claim a plot on the ridge, build with your friends, trade at the market, and keep talking in world chat while you do it.</p></div>
         <div class="rw-servers">
-          <button id="home-join-public" class="rw-slab rw-card rw-card--public" type="button">
-            <span class="rw-face">
-              <span id="home-public-glyph" class="rw-card-glyph" aria-hidden="true"></span>
-              <span class="rw-card-text">
-                <span class="rw-card-title">Public Server</span>
-                <span class="rw-card-sub">Ridgewood Main — the persistent world everyone shares.</span>
-              </span>
-              <span class="rw-card-meta">
-                <span class="rw-count"><span class="rw-dot" aria-hidden="true"></span><span id="home-public-meta">Open world</span></span>
-                <span class="rw-card-arrow" aria-hidden="true">▸ Play</span>
-              </span>
-            </span>
-          </button>
-
-          <button id="home-join-private" class="rw-slab rw-card rw-card--private" type="button">
-            <span class="rw-face">
-              <span id="home-private-glyph" class="rw-card-glyph" aria-hidden="true"></span>
-              <span class="rw-card-text">
-                <span class="rw-card-title">Private Server</span>
-                <span class="rw-card-sub">Join a friend's world with an invite code.</span>
-              </span>
-              <span class="rw-card-meta">
-                <span class="rw-count">Soon</span>
-                <span class="rw-card-arrow" aria-hidden="true">▸ Enter code</span>
-              </span>
-            </span>
-          </button>
+          <button id="home-join-public" class="rw-slab rw-card rw-card--public" type="button"><span class="rw-face"><span id="home-public-glyph" class="rw-card-glyph" aria-hidden="true"></span><span class="rw-card-text"><span class="rw-card-title">Public Server</span><span class="rw-card-sub">Ridgewood Main — the persistent world everyone shares.</span></span><span class="rw-card-meta"><span class="rw-count"><span class="rw-dot" aria-hidden="true"></span><span id="home-public-meta">Open world</span></span><span class="rw-card-arrow" aria-hidden="true">▸ Play</span></span></span></button>
+          <button id="home-join-private" class="rw-slab rw-card rw-card--private" type="button"><span class="rw-face"><span id="home-private-glyph" class="rw-card-glyph" aria-hidden="true"></span><span class="rw-card-text"><span class="rw-card-title">Private Server</span><span class="rw-card-sub">Join a friend's world with an invite code.</span></span><span class="rw-card-meta"><span class="rw-count">Soon</span><span class="rw-card-arrow" aria-hidden="true">▸ Enter code</span></span></span></button>
         </div>
       </main>
-
-      <footer class="rw-foot">
-        <span id="home-status" class="rw-status" data-state="checking">
-          <span class="rw-dot" aria-hidden="true"></span><span id="home-status-text">Checking server…</span>
-        </span>
-        <span><strong>Build 0.5.3</strong> · world seed 4102026</span>
-        <span class="rw-hint">Ridgewood receives your Discord name and avatar. It cannot read or send Discord messages.</span>
-      </footer>
+      <footer class="rw-foot"><span id="home-status" class="rw-status" data-state="checking"><span class="rw-dot" aria-hidden="true"></span><span id="home-status-text">Checking server…</span></span><span><strong>Build 0.6.0</strong> · world seed 4102026</span><span class="rw-hint">Ridgewood receives your Discord name and avatar. It cannot read or send Discord messages.</span></footer>
     </div>
   </section>
 
-  <!-- ============================================================ modal ==== -->
-  <div id="rw-modal" class="rw-modal" hidden>
-    <div class="rw-modal-backdrop"></div>
-    <div id="rw-modal-card" class="rw-modal-card" role="dialog" aria-modal="true" aria-labelledby="rw-modal-title">
-      <div id="rw-modal-glyph" class="rw-modal-glyph" aria-hidden="true"></div>
-      <h2 id="rw-modal-title"></h2>
-      <p id="rw-modal-body"></p>
-      <div id="rw-modal-actions" class="rw-modal-actions"></div>
-    </div>
-  </div>
+  <div id="rw-modal" class="rw-modal" hidden><div class="rw-modal-backdrop"></div><div id="rw-modal-card" class="rw-modal-card" role="dialog" aria-modal="true" aria-labelledby="rw-modal-title"><div id="rw-modal-glyph" class="rw-modal-glyph" aria-hidden="true"></div><h2 id="rw-modal-title"></h2><p id="rw-modal-body"></p><div id="rw-modal-actions" class="rw-modal-actions"></div></div></div>
+  <div id="rw-chat-lock" hidden><span id="rw-lock-glyph" class="rw-lock-glyph" aria-hidden="true"></span><span class="rw-lock-copy"><span class="rw-lock-title">World chat is locked</span><span class="rw-lock-sub">Log in with Discord in order to use this feature.</span></span><a class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord"><span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Log in</span></span></a></div>
+  <button id="rw-menu-button" class="rw-slab" type="button" hidden aria-label="Back to the home screen" title="Back to the home screen"><span class="rw-face"><span id="rw-menu-glyph" class="rw-menu-glyph" aria-hidden="true"></span><span>Home</span></span></button>
 
-  <!-- ================================================= chat lock (guests) == -->
-  <div id="rw-chat-lock" hidden>
-    <span id="rw-lock-glyph" class="rw-lock-glyph" aria-hidden="true"></span>
-    <span class="rw-lock-copy">
-      <span class="rw-lock-title">World chat is locked</span>
-      <span class="rw-lock-sub">Log in with Discord in order to use this feature.</span>
-    </span>
-    <a class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord">
-      <span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Log in</span></span>
-    </a>
-  </div>
-
-  <button id="rw-menu-button" class="rw-slab" type="button" hidden aria-label="Back to the home screen" title="Back to the home screen">
-    <span class="rw-face">
-      <span id="rw-menu-glyph" class="rw-menu-glyph" aria-hidden="true"></span>
-      <span>Home</span>
-    </span>
-  </button>
-
-  <!-- #game keeps its real size at all times: the home screen simply covers it.
-       Hiding it would collapse the canvas to 0x0 and the renderer only resizes
-       on window resize events. -->
-  <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.5.3 alpha">
-    <canvas id="canvas" tabindex="0"></canvas>
-  </main>
+  <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.6.0 alpha"><canvas id="canvas" tabindex="0"></canvas></main>
 
   <aside id="chat-panel" data-collapsed="false" data-members="true" aria-label="World group chat">
-    <header class="chat-header">
-      <button id="chat-collapse" class="icon-button chat-collapse" type="button" aria-label="Collapse chat" title="Collapse chat">
-        <span aria-hidden="true">›</span>
-      </button>
-      <div class="channel-mark" aria-hidden="true">#</div>
-      <div class="chat-title-block">
-        <strong>world-chat</strong>
-        <span id="chat-connection" data-state="connecting">Connecting…</span>
-      </div>
-      <div class="chat-header-actions">
-        <button id="chat-pins-toggle" class="icon-button" type="button" aria-label="Pinned messages" title="Pinned messages (Ctrl+Shift+P)">
-          <span aria-hidden="true">📌</span><span id="chat-pins-count" class="header-count" hidden></span>
-        </button>
-        <button id="chat-search-toggle" class="icon-button" type="button" aria-label="Search messages" title="Search messages (Ctrl+F)">⌕</button>
-        <button id="chat-sound-toggle" class="icon-button" type="button" aria-label="Toggle notification sound" aria-pressed="true">🔔</button>
-        <button id="chat-desktop-toggle" class="icon-button" type="button" aria-label="Toggle desktop notifications" aria-pressed="false" title="Desktop notifications">🖥</button>
-        <button id="chat-members-toggle" class="icon-button" type="button" aria-label="Toggle member list" aria-pressed="true" title="Toggle member list">👥</button>
-      </div>
-    </header>
-
-    <div id="chat-search-bar" class="chat-search" hidden>
-      <span aria-hidden="true">⌕</span>
-      <input id="chat-search-input" type="search" autocomplete="off" placeholder="Search #world-chat" aria-label="Search chat messages" />
-      <span id="chat-search-count" class="search-count"></span>
-      <button id="chat-search-prev" class="icon-button" type="button" aria-label="Previous result" title="Previous result (Shift+Enter)">↑</button>
-      <button id="chat-search-next" class="icon-button" type="button" aria-label="Next result" title="Next result (Enter)">↓</button>
-      <button id="chat-search-close" class="icon-button" type="button" aria-label="Close search">×</button>
-    </div>
-
+    <header class="chat-header"><button id="chat-collapse" class="icon-button chat-collapse" type="button" aria-label="Collapse chat" title="Collapse chat"><span aria-hidden="true">›</span></button><div class="channel-mark" aria-hidden="true">#</div><div class="chat-title-block"><strong>world-chat</strong><span id="chat-connection" data-state="connecting">Connecting…</span></div><div class="chat-header-actions"><button id="chat-pins-toggle" class="icon-button" type="button" aria-label="Pinned messages" title="Pinned messages (Ctrl+Shift+P)"><span aria-hidden="true">📌</span><span id="chat-pins-count" class="header-count" hidden></span></button><button id="chat-search-toggle" class="icon-button" type="button" aria-label="Search messages" title="Search messages (Ctrl+F)">⌕</button><button id="chat-sound-toggle" class="icon-button" type="button" aria-label="Toggle notification sound" aria-pressed="true">🔔</button><button id="chat-desktop-toggle" class="icon-button" type="button" aria-label="Toggle desktop notifications" aria-pressed="false" title="Desktop notifications">🖥</button><button id="chat-members-toggle" class="icon-button" type="button" aria-label="Toggle member list" aria-pressed="true" title="Toggle member list">👥</button></div></header>
+    <div id="chat-search-bar" class="chat-search" hidden><span aria-hidden="true">⌕</span><input id="chat-search-input" type="search" autocomplete="off" placeholder="Search #world-chat" aria-label="Search chat messages" /><span id="chat-search-count" class="search-count"></span><button id="chat-search-prev" class="icon-button" type="button" aria-label="Previous result" title="Previous result (Shift+Enter)">↑</button><button id="chat-search-next" class="icon-button" type="button" aria-label="Next result" title="Next result (Enter)">↓</button><button id="chat-search-close" class="icon-button" type="button" aria-label="Close search">×</button></div>
     <div class="chat-main">
       <section class="chat-conversation" aria-label="Message history">
-        <div id="chat-messages" class="chat-messages">
-          <div id="chat-intro" class="channel-intro">
-            <div class="channel-intro-icon" aria-hidden="true">#</div>
-            <h1>Welcome to #world-chat</h1>
-            <p>This is the shared conversation for everyone in Ridgewood. Chat, share locations, react, reply, and find other players. Type <code>/help</code> for commands.</p>
-          </div>
-          <div id="chat-message-list" class="chat-message-list" role="log" aria-live="polite" aria-relevant="additions"></div>
-        </div>
-
-        <button id="chat-jump" class="chat-jump" type="button" data-count="0" hidden>
-          <span>Jump to present</span>
-          <span aria-hidden="true">⌄</span>
-        </button>
-
+        <div id="chat-messages" class="chat-messages"><div id="chat-intro" class="channel-intro"><div class="channel-intro-icon" aria-hidden="true">#</div><h1>Welcome to #world-chat</h1><p>This is the shared conversation for everyone in Ridgewood. Chat, share locations, react, reply, and find other players. Type <code>/help</code> for commands.</p></div><div id="chat-message-list" class="chat-message-list" role="log" aria-live="polite" aria-relevant="additions"></div></div>
+        <button id="chat-jump" class="chat-jump" type="button" data-count="0" hidden><span>Jump to present</span><span aria-hidden="true">⌄</span></button>
         <div id="chat-typing" class="chat-typing" data-active="false" aria-live="polite"></div>
-
-        <footer class="chat-composer">
-          <div id="chat-reply-bar" class="chat-reply-bar" hidden>
-            <span class="reply-icon" aria-hidden="true">↩︎</span>
-            <span id="chat-reply-label">Replying</span>
-            <button id="chat-reply-cancel" class="icon-button" type="button" aria-label="Cancel reply">×</button>
-          </div>
-          <div id="chat-composer-shell" class="composer-shell" data-offline="true">
-            <div id="chat-attach" class="composer-plus" title="Attachments are not available yet" aria-hidden="true">+</div>
-            <div class="composer-input-wrap">
-              <textarea id="chat-input" rows="1" maxlength="2000" autocomplete="off" spellcheck="true" placeholder="Sign in to connect…" aria-label="Chat message"></textarea>
-              <span id="chat-char-count" data-limit="normal"></span>
-            </div>
-            <button id="chat-emoji-button" class="icon-button composer-emoji" type="button" aria-label="Open emoji picker" title="Emoji">😊</button>
-            <button id="chat-send" type="button" disabled aria-label="Send message">Send</button>
-          </div>
-          <div class="composer-help">
-            <kbd>Enter</kbd> send <span>·</span> <kbd>Shift</kbd>+<kbd>Enter</kbd> newline <span>·</span>
-            <kbd>↑</kbd> edit last <span>·</span> <code>/</code> commands <span>·</span> <code>@</code> mention <span>·</span>
-            <code>**bold**</code> <code>`code`</code> <code>||spoiler||</code>
-          </div>
-        </footer>
-
-        <div id="chat-mention-menu" class="chat-suggestion-menu" hidden></div>
-        <div id="chat-command-hint" class="chat-suggestion-menu chat-command-menu" hidden></div>
+        <footer class="chat-composer"><div id="chat-reply-bar" class="chat-reply-bar" hidden><span class="reply-icon" aria-hidden="true">↩︎</span><span id="chat-reply-label">Replying</span><button id="chat-reply-cancel" class="icon-button" type="button" aria-label="Cancel reply">×</button></div><div id="chat-composer-shell" class="composer-shell" data-offline="true"><div id="chat-attach" class="composer-plus" title="Attachments are not available yet" aria-hidden="true">+</div><div class="composer-input-wrap"><textarea id="chat-input" rows="1" maxlength="2000" autocomplete="off" spellcheck="true" placeholder="Sign in to connect…" aria-label="Chat message"></textarea><span id="chat-char-count" data-limit="normal"></span></div><button id="chat-emoji-button" class="icon-button composer-emoji" type="button" aria-label="Open emoji picker" title="Emoji">😊</button><button id="chat-send" type="button" disabled aria-label="Send message">Send</button></div><div class="composer-help"><kbd>Enter</kbd> send <span>·</span> <kbd>Shift</kbd>+<kbd>Enter</kbd> newline <span>·</span><kbd>↑</kbd> edit last <span>·</span> <code>/</code> commands <span>·</span> <code>@</code> mention <span>·</span><code>**bold**</code> <code>`code`</code> <code>||spoiler||</code></div></footer>
+        <div id="chat-mention-menu" class="chat-suggestion-menu" hidden></div><div id="chat-command-hint" class="chat-suggestion-menu chat-command-menu" hidden></div>
       </section>
-
-      <aside class="chat-players" aria-label="Players">
-        <div class="players-heading">
-          <strong>Members</strong>
-          <span id="chat-online-count">0 online</span>
-        </div>
-        <div class="member-search">
-          <input id="chat-member-search" type="search" autocomplete="off" placeholder="Find a member" aria-label="Search members" />
-        </div>
-        <div id="chat-player-list" class="chat-player-list"></div>
-        <div class="status-editor">
-          <label for="chat-name-input">Display name</label>
-          <div class="status-editor-row">
-            <input id="chat-name-input" type="text" maxlength="24" autocomplete="off" placeholder="Your name" />
-            <button id="chat-name-save" type="button">Save</button>
-          </div>
-          <label for="chat-status-input">Your status</label>
-          <div class="status-editor-row">
-            <input id="chat-status-input" type="text" maxlength="80" autocomplete="off" placeholder="What are you doing?" />
-            <button id="chat-status-save" type="button">Set</button>
-          </div>
-        </div>
-      </aside>
+      <aside class="chat-players" aria-label="Players"><div class="players-heading"><strong>Members</strong><span id="chat-online-count">0 online</span></div><div class="member-search"><input id="chat-member-search" type="search" autocomplete="off" placeholder="Find a member" aria-label="Search members" /></div><div id="chat-player-list" class="chat-player-list"></div><div class="status-editor"><label for="chat-name-input">Display name</label><div class="status-editor-row"><input id="chat-name-input" type="text" maxlength="24" autocomplete="off" placeholder="Your name" /><button id="chat-name-save" type="button">Save</button></div><label for="chat-status-input">Your status</label><div class="status-editor-row"><input id="chat-status-input" type="text" maxlength="80" autocomplete="off" placeholder="What are you doing?" /><button id="chat-status-save" type="button">Set</button></div></div></aside>
     </div>
   </aside>
 
-  <div id="chat-emoji-picker" class="chat-floating chat-emoji-picker" hidden>
-    <input id="chat-emoji-search" type="search" autocomplete="off" placeholder="Search emoji" aria-label="Search emoji" />
-    <div id="chat-emoji-results" class="emoji-results"></div>
-  </div>
-
+  <div id="chat-emoji-picker" class="chat-floating chat-emoji-picker" hidden><input id="chat-emoji-search" type="search" autocomplete="off" placeholder="Search emoji" aria-label="Search emoji" /><div id="chat-emoji-results" class="emoji-results"></div></div>
   <div id="chat-context-menu" class="chat-floating chat-context-menu" role="menu" hidden></div>
-
-  <div id="chat-pins-panel" class="chat-pins-panel" hidden>
-    <div class="pins-heading">
-      <strong>Pinned messages</strong>
-      <button id="chat-pins-close" class="icon-button" type="button" aria-label="Close pinned messages">×</button>
-    </div>
-    <div id="chat-pins-list" class="pins-list"></div>
-  </div>
-
-  <button id="chat-collapsed-tab" type="button" aria-label="Expand world chat" data-unread="false" hidden>
-    <span class="chat-tab-icon" aria-hidden="true">◉</span>
-    <span class="chat-tab-label">Chat</span>
-    <span id="chat-unread" class="chat-unread" data-mention="false" hidden>0</span>
-  </button>
-
+  <div id="chat-pins-panel" class="chat-pins-panel" hidden><div class="pins-heading"><strong>Pinned messages</strong><button id="chat-pins-close" class="icon-button" type="button" aria-label="Close pinned messages">×</button></div><div id="chat-pins-list" class="pins-list"></div></div>
+  <button id="chat-collapsed-tab" type="button" aria-label="Expand world chat" data-unread="false" hidden><span class="chat-tab-icon" aria-hidden="true">◉</span><span class="chat-tab-label">Chat</span><span id="chat-unread" class="chat-unread" data-mention="false" hidden>0</span></button>
   <section id="chat-toasts" class="chat-toasts" aria-label="Chat notifications" aria-live="polite"></section>
-
-  <div id="loading" role="status" hidden>
-    <div class="loader"></div>
-    <div id="loading-text">Dropping you into the valley…</div>
-  </div>
-
-  <div id="build-badge" aria-live="polite" hidden>
-    <strong>RIDGEWOOD · v0.5.3 ALPHA</strong>
-    <span id="network-label">waiting for sign in…</span>
-    <span id="player-label">players unavailable</span>
-    <span id="seed-label">seed loading…</span>
-    <span id="chunk-label">chunk loading…</span>
-  </div>
-
-  <div id="help" aria-hidden="true" hidden>
-    <span><kbd>WASD</kbd> / <kbd>Arrows</kbd> move</span>
-    <span><kbd>Enter</kbd> chat</span>
-    <span><kbd>Scroll</kbd> zoom</span>
-    <span><kbd>Ctrl/⌘ F</kbd> search</span>
-  </div>
-
-  <div id="error" hidden>
-    <strong>Unable to start Ridgewood.</strong>
-    <span id="error-message"></span>
-  </div>
+  <div id="loading" role="status" hidden><div class="loader"></div><div id="loading-text">Dropping you into the valley…</div></div>
+  <div id="build-badge" aria-live="polite" hidden><strong>RIDGEWOOD · v0.6.0 ALPHA</strong><span id="network-label">waiting for sign in…</span><span id="player-label">players unavailable</span><span id="seed-label">seed loading…</span><span id="chunk-label">chunk loading…</span></div>
+  <div id="help" aria-hidden="true" hidden><span><kbd>WASD</kbd> / <kbd>Arrows</kbd> move</span><span><kbd>Enter</kbd> chat</span><span><kbd>Scroll</kbd> zoom</span><span><kbd>Ctrl/⌘ F</kbd> search</span></div>
+  <div id="error" hidden><strong>Unable to start Ridgewood.</strong><span id="error-message"></span></div>
 
   <script src="config.js?v=0.4.2-auth"></script>
   <script src="home-v0.5.0.js?v=0.5.1"></script>
   <script src="chat-world-commands-v0.5.2.js?v=0.5.2"></script>
   <script src="chat-v4.3.0.js?v=4.3.3"></script>
   <script src="chunk-claim-borders-v0.5.3.js?v=0.5.3"></script>
-  <script src="auth-v0.5.0.js?v=0.5.3"></script>
+  <script src="auth-v0.5.0.js?v=0.6.0"></script>
 </body>
 </html>
