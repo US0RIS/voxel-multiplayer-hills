@@ -1,4 +1,4 @@
-/* Ridgewood — Discord authentication, v0.5.0
+/* Ridgewood — Discord authentication, v0.5.1
  *
  * Replaces the v0.4.2 full-screen sign-in gate. Same session handling, same
  * token storage, same authenticated-WebSocket wrapper — the difference is
@@ -103,7 +103,7 @@
     gameStarted = true;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = 'game-loader-v4.3.0.js?v=0.5.0';
+    script.src = 'game-loader-v4.3.0.js?v=0.5.1';
     script.onerror = () => {
       gameStarted = false;
       window.RIDGEWOOD_HOME?.setStatus('offline', 'Game module failed to load');
