@@ -34,6 +34,11 @@ SERVER_URL = os.getenv("SERVER_URL", "https://voxel-multiplayer-hills-410-server
 REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", f"{SERVER_URL}/auth/discord/callback").strip()
 AUTH_REQUIRED = os.getenv("AUTH_REQUIRED", "1").lower() in {"1", "true", "yes", "on"}
 PASSWORD_AUTH_ENABLED = os.getenv("PASSWORD_AUTH_ENABLED", "1").lower() in {"1", "true", "yes", "on"}
+ADMIN_USERNAMES = tuple(
+    name.strip().lower()
+    for name in os.getenv("ADMIN_USERNAMES", "").split(",")
+    if name.strip()
+)
 SESSION_TTL = max(3600, int(os.getenv("AUTH_SESSION_TTL_SECONDS", str(30 * 86400))))
 STATE_TTL = max(60, int(os.getenv("AUTH_STATE_TTL_SECONDS", "600")))
 CACHE_TTL = max(15, min(600, int(os.getenv("AUTH_SESSION_CACHE_SECONDS", "120"))))
@@ -77,7 +82,12 @@ def handle_request(method: str, path: str, headers: dict[str, str], body: bytes,
         return handle_password_login(body, client_ip)
     if clean == "/auth/me" and method == "GET":
         user = authenticate_session(extract_session_token(headers, query))
-        return _json(200, {"authenticated": True, "user": user}) if user else _json(401, {"authenticated": False, "error": "unauthorized"})
+        if not user:
+            return _json(401, {"authenticated": False, "error": "unauthorized"})
+        ban = ban_state(user)
+        if ban:
+            return _json(403, {"authenticated": False, "error": "account_banned", "ban": ban})
+        return _json(200, {"authenticated": True, "user": user})
     if clean == "/auth/logout" and method == "POST":
         revoke_session(extract_session_token(headers, query))
         return AuthResponse(204, {}, {"Set-Cookie": _expired_cookie(), "Cache-Control": "no-store"})
@@ -90,6 +100,7 @@ def handle_request(method: str, path: str, headers: dict[str, str], body: bytes,
             },
             "authRequired": AUTH_REQUIRED,
             "storage": "supabase" if STORE.ready else "unavailable",
+            "roles": True,
             "redirectUri": REDIRECT_URI if discord_configured() else None,
         })
     return None
@@ -114,6 +125,9 @@ def handle_password_login(body: bytes, client_ip: str) -> AuthResponse:
         return _json(503, {"error": "password_auth_not_configured"})
     try:
         row = password_auth.login(body, client_ip)
+        ban = ban_state(_public_user(row, None, provider="password"))
+        if ban:
+            return _json(403, {"authenticated": False, "error": "account_banned", "ban": ban})
         raw_token, user = _issue_session(row, provider="password")
         return _json(200, {"authenticated": True, "token": raw_token, "user": user})
     except PasswordAuthError as exc:
@@ -250,6 +264,51 @@ def safe_display_name(user: Optional[dict[str, Any]]) -> str:
     return (" ".join(cleaned.split()).strip(" ._-") or "Player")[:24]
 
 
+def normalize_role(value: Any) -> str:
+    role = str(value or "player").strip().lower()
+    return role if role in {"player", "moderator", "admin"} else "player"
+
+
+def _parse_timestamp(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def ban_state(user: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    """Return active ban details for a user payload, or None when not banned."""
+    if not user:
+        return None
+    expires = _parse_timestamp(user.get("banned_until"))
+    if not expires or expires <= datetime.now(timezone.utc):
+        return None
+    remaining = int((expires - datetime.now(timezone.utc)).total_seconds())
+    return {
+        "until": user.get("banned_until"),
+        "reason": str(user.get("ban_reason") or "") or None,
+        "permanent": remaining > 3600 * 24 * 3650,
+        "secondsRemaining": remaining,
+    }
+
+
+def is_banned(user: Optional[dict[str, Any]]) -> bool:
+    return ban_state(user) is not None
+
+
+def invalidate_user(user_id: str) -> None:
+    """Drop cached sessions for one account so role/ban changes apply at once."""
+    target = str(user_id or "")
+    if not target:
+        return
+    with _LOCK:
+        for key, (_expires, user) in list(_CACHE.items()):
+            if str(user.get("user_id") or "") == target:
+                _CACHE.pop(key, None)
+
+
 def _public_user(row: dict[str, Any], expires: Any, provider: str | None = None) -> dict[str, Any]:
     detected_provider = provider or ("discord" if row.get("discord_id") else "password")
     return {
@@ -260,6 +319,9 @@ def _public_user(row: dict[str, Any], expires: Any, provider: str | None = None)
         "discord_username": str(row.get("discord_username") or ""),
         "avatar_url": str(row.get("avatar_url") or ""),
         "coins": int(row.get("coins") or 0),
+        "role": normalize_role(row.get("role")),
+        "banned_until": row.get("banned_until"),
+        "ban_reason": row.get("ban_reason"),
         "expires_at": expires,
     }
 
