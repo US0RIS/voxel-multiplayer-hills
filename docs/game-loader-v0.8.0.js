@@ -119,6 +119,61 @@ const GAME_PATCHES = [
     `      const labels = { already_claimed: 'That chunk is already claimed.', claim_limit: 'You have reached your chunk claim limit.', stand_in_chunk_to_claim: 'Stand inside a chunk to claim it.' };`,
     `      const labels = { already_claimed: 'That chunk is already claimed.', claim_limit: 'You have reached your chunk claim limit.', stand_in_chunk_to_claim: 'Stand inside a chunk to claim it.', forbidden: 'You do not have permission to do that.' };`,
     'admin claim labels'
+  ],
+
+  /* --------------------------------------------------------------------
+   * Fix infinite recursion inherited from the v0.6.0 loader.
+   *
+   * v4.3.0 wraps one terrain function in overlayColumnHeight() so placed
+   * blocks raise the effective ground height. Its anchor is
+   * `return clamp(height, MIN_HEIGHT, MAX_HEIGHT);`, and it replaces the
+   * FIRST match. v0.6.0 injects baseTerrainHeightForBuild() -- which ends in
+   * that same line -- earlier in the file, so the wrapper landed on
+   * baseTerrainHeightForBuild instead of getTerrainCellHeight.
+   *
+   * v0.6.0 also rewrote overlayColumnHeight() to call occupiedVoxelAt(),
+   * which calls baseTerrainHeightForBuild(). Together that closes a loop:
+   *
+   *   baseTerrainHeightForBuild -> overlayColumnHeight
+   *                             -> occupiedVoxelAt -> baseTerrainHeightForBuild
+   *
+   * It recurses unconditionally, so the first terrain lookup throws
+   * "RangeError: Maximum call stack size exceeded". That happens inside
+   * regenerateTerrain() during handleWelcome(), before the promise that
+   * hides the loading overlay is resolved -- hence a permanent
+   * "Connecting to multiplayer room...".
+   *
+   * Both anchors below are unique: getTerrainCellHeight has a blank line
+   * before its return, baseTerrainHeightForBuild does not.
+   * -------------------------------------------------------------------- */
+  [
+    `    height = Math.round(mix(centerHeight, height, blend));
+  }
+  return overlayColumnHeight(worldCellX, worldCellZ, clamp(height, MIN_HEIGHT, MAX_HEIGHT));
+}`,
+    `    height = Math.round(mix(centerHeight, height, blend));
+  }
+  // Base terrain only. occupiedVoxelAt() layers placed and removed voxels on
+  // top of this, so calling overlayColumnHeight() here would recurse.
+  return clamp(height, MIN_HEIGHT, MAX_HEIGHT);
+}`,
+    'break terrain recursion'
+  ],
+  [
+    `    height = Math.round(mix(centerHeight, height, blend));
+  }
+
+  return clamp(height, MIN_HEIGHT, MAX_HEIGHT);
+}`,
+    `    height = Math.round(mix(centerHeight, height, blend));
+  }
+
+  // The wrapper v4.3.0 intended for this function: placed blocks raise the
+  // ground the camera and remote players stand on. Safe now that
+  // baseTerrainHeightForBuild no longer calls back into it.
+  return overlayColumnHeight(worldCellX, worldCellZ, clamp(height, MIN_HEIGHT, MAX_HEIGHT));
+}`,
+    'restore overlay on getTerrainCellHeight'
   ]
 ];
 
