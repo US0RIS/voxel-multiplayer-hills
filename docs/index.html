@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Ridgewood v0.6.0 alpha" />
+  <meta name="description" content="Ridgewood v0.7.0 alpha" />
   <title>Ridgewood — Early Alpha</title>
   <link rel="stylesheet" href="styles.css?v=4.3.2" />
   <link rel="stylesheet" href="discord-chat-v4.3.1.css?v=4.3.2" />
@@ -17,10 +17,10 @@
     <div class="rw-veil" aria-hidden="true"></div>
     <div class="rw-stage">
       <header class="rw-top">
-        <div class="rw-brand"><span id="home-brand-cube" class="rw-brand-cube" aria-hidden="true"></span><span class="rw-brand-name">Ridgewood</span><span class="rw-chip">v0.6.0 alpha</span></div>
+        <div class="rw-brand"><span id="home-brand-cube" class="rw-brand-cube" aria-hidden="true"></span><span class="rw-brand-name">Ridgewood</span><span class="rw-chip">v0.7.0 alpha</span></div>
         <div class="rw-account">
-          <a id="home-login" class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord"><span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Continue with Discord</span></span></a>
-          <div id="home-identity" class="rw-identity" hidden><img id="home-avatar" class="rw-avatar" alt="" width="32" height="32" /><span class="rw-identity-text"><span id="home-username" class="rw-identity-name">Adventurer</span><span class="rw-identity-role">Signed in · Discord</span></span><button id="home-logout" class="rw-ghost" type="button">Sign out</button></div>
+          <a id="home-login" class="rw-slab rw-discord" href="#login" data-login-chooser="true"><span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Log in</span></span></a>
+          <div id="home-identity" class="rw-identity" hidden><img id="home-avatar" class="rw-avatar" alt="" width="32" height="32" /><span class="rw-identity-text"><span id="home-username" class="rw-identity-name">Adventurer</span><span class="rw-identity-role">Signed in</span></span><button id="home-logout" class="rw-ghost" type="button">Sign out</button></div>
         </div>
       </header>
       <main class="rw-body">
@@ -31,15 +31,15 @@
           <button id="home-join-private" class="rw-slab rw-card rw-card--private" type="button"><span class="rw-face"><span id="home-private-glyph" class="rw-card-glyph" aria-hidden="true"></span><span class="rw-card-text"><span class="rw-card-title">Private Server</span><span class="rw-card-sub">Join a friend's world with an invite code.</span></span><span class="rw-card-meta"><span class="rw-count">Soon</span><span class="rw-card-arrow" aria-hidden="true">▸ Enter code</span></span></span></button>
         </div>
       </main>
-      <footer class="rw-foot"><span id="home-status" class="rw-status" data-state="checking"><span class="rw-dot" aria-hidden="true"></span><span id="home-status-text">Checking server…</span></span><span><strong>Build 0.6.0</strong> · world seed 4102026</span><span class="rw-hint">Ridgewood receives your Discord name and avatar. It cannot read or send Discord messages.</span></footer>
+      <footer class="rw-foot"><span id="home-status" class="rw-status" data-state="checking"><span class="rw-dot" aria-hidden="true"></span><span id="home-status-text">Checking server…</span></span><span><strong>Build 0.7.0</strong> · world seed 4102026</span><span class="rw-hint">Ridgewood uses your selected login method only to identify your account.</span></footer>
     </div>
   </section>
 
   <div id="rw-modal" class="rw-modal" hidden><div class="rw-modal-backdrop"></div><div id="rw-modal-card" class="rw-modal-card" role="dialog" aria-modal="true" aria-labelledby="rw-modal-title"><div id="rw-modal-glyph" class="rw-modal-glyph" aria-hidden="true"></div><h2 id="rw-modal-title"></h2><p id="rw-modal-body"></p><div id="rw-modal-actions" class="rw-modal-actions"></div></div></div>
-  <div id="rw-chat-lock" hidden><span id="rw-lock-glyph" class="rw-lock-glyph" aria-hidden="true"></span><span class="rw-lock-copy"><span class="rw-lock-title">World chat is locked</span><span class="rw-lock-sub">Log in with Discord in order to use this feature.</span></span><a class="rw-slab rw-discord" href="https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord"><span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Log in</span></span></a></div>
+  <div id="rw-chat-lock" hidden><span id="rw-lock-glyph" class="rw-lock-glyph" aria-hidden="true"></span><span class="rw-lock-copy"><span class="rw-lock-title">World chat is locked</span><span class="rw-lock-sub">Log in to use world chat.</span></span><a class="rw-slab rw-discord" href="#login" data-login-chooser="true"><span class="rw-face"><span data-discord-mark aria-hidden="true"></span><span>Log in</span></span></a></div>
   <button id="rw-menu-button" class="rw-slab" type="button" hidden aria-label="Back to the home screen" title="Back to the home screen"><span class="rw-face"><span id="rw-menu-glyph" class="rw-menu-glyph" aria-hidden="true"></span><span>Home</span></span></button>
 
-  <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.6.0 alpha"><canvas id="canvas" tabindex="0"></canvas></main>
+  <main id="game" aria-label="Ridgewood multiplayer voxel world version 0.7.0 alpha"><canvas id="canvas" tabindex="0"></canvas></main>
 
   <aside id="chat-panel" data-collapsed="false" data-members="true" aria-label="World group chat">
     <header class="chat-header"><button id="chat-collapse" class="icon-button chat-collapse" type="button" aria-label="Collapse chat" title="Collapse chat"><span aria-hidden="true">›</span></button><div class="channel-mark" aria-hidden="true">#</div><div class="chat-title-block"><strong>world-chat</strong><span id="chat-connection" data-state="connecting">Connecting…</span></div><div class="chat-header-actions"><button id="chat-pins-toggle" class="icon-button" type="button" aria-label="Pinned messages" title="Pinned messages (Ctrl+Shift+P)"><span aria-hidden="true">📌</span><span id="chat-pins-count" class="header-count" hidden></span></button><button id="chat-search-toggle" class="icon-button" type="button" aria-label="Search messages" title="Search messages (Ctrl+F)">⌕</button><button id="chat-sound-toggle" class="icon-button" type="button" aria-label="Toggle notification sound" aria-pressed="true">🔔</button><button id="chat-desktop-toggle" class="icon-button" type="button" aria-label="Toggle desktop notifications" aria-pressed="false" title="Desktop notifications">🖥</button><button id="chat-members-toggle" class="icon-button" type="button" aria-label="Toggle member list" aria-pressed="true" title="Toggle member list">👥</button></div></header>
@@ -62,7 +62,7 @@
   <button id="chat-collapsed-tab" type="button" aria-label="Expand world chat" data-unread="false" hidden><span class="chat-tab-icon" aria-hidden="true">◉</span><span class="chat-tab-label">Chat</span><span id="chat-unread" class="chat-unread" data-mention="false" hidden>0</span></button>
   <section id="chat-toasts" class="chat-toasts" aria-label="Chat notifications" aria-live="polite"></section>
   <div id="loading" role="status" hidden><div class="loader"></div><div id="loading-text">Dropping you into the valley…</div></div>
-  <div id="build-badge" aria-live="polite" hidden><strong>RIDGEWOOD · v0.6.0 ALPHA</strong><span id="network-label">waiting for sign in…</span><span id="player-label">players unavailable</span><span id="seed-label">seed loading…</span><span id="chunk-label">chunk loading…</span></div>
+  <div id="build-badge" aria-live="polite" hidden><strong>RIDGEWOOD · v0.7.0 ALPHA</strong><span id="network-label">waiting for sign in…</span><span id="player-label">players unavailable</span><span id="seed-label">seed loading…</span><span id="chunk-label">chunk loading…</span></div>
   <div id="help" aria-hidden="true" hidden><span><kbd>WASD</kbd> / <kbd>Arrows</kbd> move</span><span><kbd>Enter</kbd> chat</span><span><kbd>Scroll</kbd> zoom</span><span><kbd>Ctrl/⌘ F</kbd> search</span></div>
   <div id="error" hidden><strong>Unable to start Ridgewood.</strong><span id="error-message"></span></div>
 
@@ -71,6 +71,6 @@
   <script src="chat-world-commands-v0.5.2.js?v=0.5.2"></script>
   <script src="chat-v4.3.0.js?v=4.3.3"></script>
   <script src="chunk-claim-borders-v0.5.3.js?v=0.5.3"></script>
-  <script src="auth-v0.5.0.js?v=0.6.0"></script>
+  <script src="auth-v0.5.0.js?v=0.7.0"></script>
 </body>
 </html>
