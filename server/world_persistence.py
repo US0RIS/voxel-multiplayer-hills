@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Server-authoritative world persistence for Ridgewood v0.5.0.
+"""Server-authoritative world persistence for Ridgewood v0.6.0.
 
 Coordinates, chunk ownership and sparse voxel overlays are durable in
 Supabase. Position writes are coalesced on a background thread so movement and
@@ -8,7 +8,6 @@ chat never wait on database latency.
 from __future__ import annotations
 
 import math
-import queue
 import threading
 import time
 import uuid
@@ -27,6 +26,9 @@ CHUNK_SIZE = 16
 MAX_WORLD_COORDINATE = 1_000_000.0
 MAX_BUILD_HEIGHT = 96
 MAX_BUILD_DISTANCE = 8.0
+WORLD_FLOOR = 0
+PLAYER_RADIUS = 0.34
+PLAYER_HEIGHT = 1.72
 POSITION_SAVE_SECONDS = 6.0
 CHUNK_CACHE_SECONDS = 20.0
 ALLOWED_BLOCKS = {"grass", "dirt", "stone"}
@@ -106,7 +108,6 @@ class _PositionWriter:
                 STORE.save_position(user_id, **position)
             except (SupabaseError, ValueError) as exc:
                 print(f"Position persistence failed for {user_id}: {exc}", flush=True)
-                # Retain the newest value if another update has not superseded it.
                 with self._condition:
                     self._pending.setdefault(user_id, position)
                 time.sleep(1.0)
@@ -123,8 +124,6 @@ class WorldPersistence:
     @property
     def ready(self) -> bool:
         return STORE.ready
-
-    # -------------------------------------------------------------- positions
 
     def load_position(self, user_id: str) -> dict[str, Any] | None:
         if not self.ready or not user_id:
@@ -170,8 +169,6 @@ class WorldPersistence:
         else:
             self._position_writer.submit(user_id, payload)
 
-    # ---------------------------------------------------------------- chunks
-
     def _cache_set(self, chunk: dict[str, Any]) -> dict[str, Any]:
         public = public_chunk(
             chunk,
@@ -208,7 +205,6 @@ class WorldPersistence:
             for row in STORE.get_chunks(missing, self.world_id):
                 public = self._cache_set(row)
                 output[(public["chunkX"], public["chunkZ"])] = public
-        # Return an explicit unclaimed record for every requested coordinate.
         return [output.get(pair, public_chunk(None, *pair)) for pair in unique]
 
     def claims_for_user(self, user_id: str) -> list[dict[str, Any]]:
@@ -231,8 +227,6 @@ class WorldPersistence:
             result["chunk"] = self._cache_set(result["chunk"])
         return result
 
-    # --------------------------------------------------------------- building
-
     def validate_edit(self, client: Any, message: dict[str, Any]) -> dict[str, Any]:
         action = str(message.get("action") or "").lower()
         if action not in {"place", "remove"}:
@@ -241,7 +235,7 @@ class WorldPersistence:
         chunk_z = _integer(message.get("chunkZ"), minimum=-62500, maximum=62500)
         local_x = _integer(message.get("localX"), minimum=0, maximum=CHUNK_SIZE - 1)
         local_z = _integer(message.get("localZ"), minimum=0, maximum=CHUNK_SIZE - 1)
-        y = _integer(message.get("y"), minimum=-64, maximum=MAX_BUILD_HEIGHT)
+        y = _integer(message.get("y"), minimum=WORLD_FLOOR, maximum=MAX_BUILD_HEIGHT)
 
         world_x = chunk_x * CHUNK_SIZE + local_x + 0.5
         world_z = chunk_z * CHUNK_SIZE + local_z + 0.5
@@ -255,12 +249,30 @@ class WorldPersistence:
         except (ValueError, AttributeError) as exc:
             raise ValueError("invalid_action_id") from exc
 
+        if action == "remove" and y <= WORLD_FLOOR:
+            raise ValueError("bedrock")
+
         block: dict[str, Any] | None = None
         if action == "place":
             source = message.get("block") if isinstance(message.get("block"), dict) else {}
             block_type = str(source.get("type") or "").lower()
             if block_type not in ALLOWED_BLOCKS:
                 raise ValueError("invalid_block")
+            world_min_x = chunk_x * CHUNK_SIZE + local_x
+            world_min_z = chunk_z * CHUNK_SIZE + local_z
+            client_x = float(client.x)
+            client_y = float(getattr(client, "y", y))
+            client_z = float(client.z)
+            intersects_player = (
+                world_min_x + 1 > client_x - PLAYER_RADIUS
+                and world_min_x < client_x + PLAYER_RADIUS
+                and world_min_z + 1 > client_z - PLAYER_RADIUS
+                and world_min_z < client_z + PLAYER_RADIUS
+                and y + 1 > client_y + 0.02
+                and y < client_y + PLAYER_HEIGHT - 0.02
+            )
+            if intersects_player:
+                raise ValueError("intersects_player")
             block = {"type": block_type}
 
         return {

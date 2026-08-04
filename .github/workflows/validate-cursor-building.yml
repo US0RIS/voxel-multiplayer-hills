@@ -1,9 +1,10 @@
-name: Validate cursor building
+name: Validate voxel building and mining
 
 on:
   push:
     branches:
       - feature/cursor-building-chunk-tools-v0.5.1
+      - feature/terrain-mining-collision-v0.6.0
   pull_request:
     branches:
       - main
@@ -24,9 +25,12 @@ jobs:
       - name: Validate browser source syntax
         run: |
           node --check docs/game-loader-v4.3.0.js
+          node --check docs/game-loader-v0.6.0.js
           node --check docs/auth-v0.5.0.js
           node --check docs/home-v0.5.0.js
-      - name: Apply loader patches and validate generated renderer
+          node --check docs/chunk-claim-borders-v0.5.3.js
+          node --check docs/chat-world-commands-v0.5.2.js
+      - name: Apply base loader patches and validate generated renderer
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -51,12 +55,7 @@ jobs:
                       i += 1
                       continue
                   next_char = text[i + 1]
-                  if next_char in escapes:
-                      out.append(escapes[next_char])
-                  elif next_char in {'\\', '`', '$', "'", '"'}:
-                      out.append(next_char)
-                  else:
-                      out.append(next_char)
+                  out.append(escapes.get(next_char, next_char))
                   i += 2
               return ''.join(out)
 
@@ -72,14 +71,17 @@ jobs:
           if count < 10:
               raise SystemExit(f'Only applied {count} renderer patches')
           Path('/tmp/ridgewood-generated.mjs').write_text(renderer)
-          print(f'Applied {count} renderer patches')
+          print(f'Applied {count} base renderer patches')
           PY
           node --check /tmp/ridgewood-generated.mjs
-      - name: Confirm required features
+      - name: Confirm mining and collision features
         run: |
           grep -q "function raycastWorld" docs/game-loader-v4.3.0.js
-          grep -q "function renderWorldInteractionOverlay" docs/game-loader-v4.3.0.js
-          grep -q "'/showchunks'" docs/game-loader-v4.3.0.js
-          grep -q "'/mychunks'" docs/game-loader-v4.3.0.js
-          grep -q "world-block-loader" docs/world-v0.5.0.css
-          grep -q "data-collapsed" docs/world-v0.5.0.css
+          grep -q "function reconcileWorldVoxels" docs/game-loader-v0.6.0.js
+          grep -q "function canOccupyPlayerAt" docs/game-loader-v0.6.0.js
+          grep -q "kind: 'terrain'" docs/game-loader-v0.6.0.js
+          grep -q "voxel player collision" docs/game-loader-v0.6.0.js
+          grep -q "bedrock" server/world_persistence.py
+          grep -q "intersects_player" server/world_persistence.py
+          grep -q "jsonb_build_object('action', 'remove')" SUPABASE_MIGRATION_003_TERRAIN_MINING.sql
+          ! grep -q "voxel_data = coalesce(voxel_data, '{}'::jsonb) - v_key" SUPABASE_MIGRATION_003_TERRAIN_MINING.sql
