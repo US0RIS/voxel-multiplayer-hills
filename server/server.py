@@ -12,8 +12,6 @@ import auth_supabase as auth
 from auth_runtime_patch import patch_auth_runtime
 from world_runtime_patch import patch_world_runtime
 
-# The generated runtime imports `auth`; expose the durable implementation under
-# that module name without changing the generated source.
 sys.modules["auth"] = auth
 
 root = Path(__file__).resolve().parent
@@ -32,6 +30,11 @@ for part in parts:
 source = b"".join(chunks).decode("utf-8")
 source = patch_auth_runtime(source)
 source = patch_world_runtime(source)
+spawn_before = '"spawn": {"x": client.spawn_x, "z": client.spawn_z}'
+spawn_after = '"spawn": {"x": client.spawn_x, "y": getattr(client, "y", 0.0), "z": client.spawn_z, "angle": client.angle}'
+if spawn_before not in source:
+    raise SystemExit("Persistent spawn integration target was not found.")
+source = source.replace(spawn_before, spawn_after, 1)
 
 exec(
     compile(source, str(root / "ridgewood-v0.5.0-runtime.py"), "exec"),
