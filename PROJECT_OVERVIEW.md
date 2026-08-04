@@ -73,7 +73,7 @@ A persistent multiplayer world game that functions primarily as a group chat rep
 
 ---
 
-## Current State (Build 4.3.0)
+## Current State (Build 0.8.0-alpha)
 
 ### ✅ Completed
 - Procedural terrain generation with rolling hills (Perlin noise)
@@ -95,13 +95,20 @@ A persistent multiplayer world game that functions primarily as a group chat rep
 - Persistence layer for **chunk/build data** (chat history already persists)
 - Building system (place/remove blocks, claim chunks)
 
+- **Staff roles and moderation** — shipped in 0.8.0
+  - `player` / `moderator` / `admin` roles stored in Supabase
+  - In-game control panel (F1): player list, kick, ban, roles, audit log
+  - Timed and permanent account bans, enforced at login and on connect
+  - Staff can build inside any claim, fly, and move faster
+  - Admin and moderator chat messages are visually prominent
+  - See [`ADMIN.md`](ADMIN.md); regression suites in [`tests/`](tests/)
+
 ### 📋 Planned
 - Marketplace hub (physical stalls near spawn)
 - Resource harvesting & respawn system
 - Cosmetics marketplace
 - Battle pass system
 - Private server software + licensing
-- Admin tools (player management, moderation)
 - Voice chat integration (optional)
 
 ---

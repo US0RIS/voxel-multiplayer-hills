@@ -9,6 +9,7 @@ from pathlib import Path
 
 import auth_env  # Loads Render's /etc/secrets/.env before config imports.
 import auth_supabase as auth
+from admin_runtime_patch import patch_admin_runtime
 from auth_runtime_patch import patch_auth_runtime
 from world_runtime_patch import patch_world_runtime
 
@@ -30,6 +31,7 @@ for part in parts:
 source = b"".join(chunks).decode("utf-8")
 source = patch_auth_runtime(source)
 source = patch_world_runtime(source)
+source = patch_admin_runtime(source)
 spawn_before = '"spawn": {"x": client.spawn_x, "z": client.spawn_z}'
 spawn_after = '"spawn": {"x": client.spawn_x, "y": getattr(client, "y", 0.0), "z": client.spawn_z, "angle": client.angle}'
 if spawn_before not in source:

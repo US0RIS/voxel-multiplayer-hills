@@ -21,6 +21,17 @@ services:
         value: "https://voxel-multiplayer-hills-410-server.onrender.com/auth/discord/callback"
       - key: AUTH_REQUIRED
         value: "1"
+      # Accounts promoted to admin on startup. Comma separated. Promotion is
+      # one way: removing a name here does not demote the account.
+      - key: ADMIN_USERNAMES
+        value: "Admin"
+      # Staff build reach in blocks, and the flight ceiling.
+      - key: ADMIN_BUILD_DISTANCE
+        value: "48"
+      - key: ADMIN_MAX_FLY_HEIGHT
+        value: "180"
+      - key: ADMIN_MAX_SPEED_MULTIPLIER
+        value: "6"
       - key: DISCORD_CLIENT_ID
         sync: false
       - key: DISCORD_CLIENT_SECRET

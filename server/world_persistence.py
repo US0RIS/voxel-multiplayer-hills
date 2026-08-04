@@ -14,6 +14,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+import admin
 from supabase_store import (
     MAX_CHUNK_CLAIMS,
     PUBLIC_WORLD_ID,
@@ -30,6 +31,8 @@ WORLD_FLOOR = 0
 PLAYER_RADIUS = 0.34
 PLAYER_HEIGHT = 1.72
 POSITION_SAVE_SECONDS = 6.0
+# Staff are not metered by the paid claim limit.
+STAFF_CLAIM_LIMIT = 100_000
 CHUNK_CACHE_SECONDS = 20.0
 ALLOWED_BLOCKS = {"grass", "dirt", "stone"}
 
@@ -212,7 +215,9 @@ class WorldPersistence:
             return []
         return [self._cache_set(row) for row in STORE.claims_for_user(user_id, self.world_id)]
 
-    def claim_chunk(self, user_id: str, chunk_x: int, chunk_z: int) -> dict[str, Any]:
+    def claim_chunk(
+        self, user_id: str, chunk_x: int, chunk_z: int, *, staff: bool = False
+    ) -> dict[str, Any]:
         if not self.ready:
             return {"ok": False, "error": "persistence_unavailable"}
         result = STORE.claim_chunk(
@@ -220,7 +225,7 @@ class WorldPersistence:
             chunk_x=int(chunk_x),
             chunk_z=int(chunk_z),
             world_id=self.world_id,
-            claim_limit=self.claim_limit,
+            claim_limit=STAFF_CLAIM_LIMIT if staff else self.claim_limit,
         )
         if isinstance(result.get("chunk"), dict):
             result = dict(result)
@@ -228,6 +233,12 @@ class WorldPersistence:
         return result
 
     def validate_edit(self, client: Any, message: dict[str, Any]) -> dict[str, Any]:
+        # Staff powers are read from the connection's server-side role, never
+        # from the message. The message only carries intent: an admin with the
+        # override switched off is validated exactly like any other player.
+        staff = admin.client_is_staff(client)
+        override = staff and bool(message.get("adminOverride"))
+        reach = admin.ADMIN_BUILD_DISTANCE if override else MAX_BUILD_DISTANCE
         action = str(message.get("action") or "").lower()
         if action not in {"place", "remove"}:
             raise ValueError("invalid_action")
@@ -240,7 +251,7 @@ class WorldPersistence:
         world_x = chunk_x * CHUNK_SIZE + local_x + 0.5
         world_z = chunk_z * CHUNK_SIZE + local_z + 0.5
         client_y = float(getattr(client, "y", y))
-        if math.dist((float(client.x), client_y, float(client.z)), (world_x, y + 0.5, world_z)) > MAX_BUILD_DISTANCE:
+        if math.dist((float(client.x), client_y, float(client.z)), (world_x, y + 0.5, world_z)) > reach:
             raise ValueError("too_far")
 
         raw_action_id = str(message.get("clientActionId") or "")
@@ -271,7 +282,7 @@ class WorldPersistence:
                 and y + 1 > client_y + 0.02
                 and y < client_y + PLAYER_HEIGHT - 0.02
             )
-            if intersects_player:
+            if intersects_player and not override:
                 raise ValueError("intersects_player")
             block = {"type": block_type}
 
@@ -284,6 +295,7 @@ class WorldPersistence:
             "y": y,
             "block": block,
             "client_action_id": action_id,
+            "admin_override": override,
         }
 
     def apply_edit(self, user_id: str, edit: dict[str, Any]) -> dict[str, Any]:
@@ -300,6 +312,7 @@ class WorldPersistence:
             block=edit["block"],
             client_action_id=edit["client_action_id"],
             world_id=self.world_id,
+            admin_override=bool(edit.get("admin_override")),
         )
         if isinstance(result.get("chunk"), dict):
             result = dict(result)

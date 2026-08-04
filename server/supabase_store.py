@@ -27,6 +27,14 @@ SUPABASE_TIMEOUT_SECONDS = max(
 PUBLIC_WORLD_ID = os.getenv("WORLD_ID", "public").strip() or "public"
 MAX_CHUNK_CLAIMS = max(1, min(100, int(os.getenv("MAX_CHUNK_CLAIMS", "4"))))
 
+# Every account read goes through this list so role and ban state are always
+# available to the auth layer. Adding a column here is the only change needed.
+USER_COLUMNS = (
+    "id,discord_id,discord_username,display_name,avatar_url,coins,"
+    "role,banned_until,ban_reason,banned_at,banned_by"
+)
+STAFF_ROLES = ("moderator", "admin")
+
 
 class SupabaseError(RuntimeError):
     """Raised when Supabase returns an error or an invalid response."""
@@ -186,7 +194,7 @@ class SupabaseStore:
             "GET",
             "game_users",
             query={
-                "select": "id,discord_id,discord_username,display_name,avatar_url,coins",
+                "select": USER_COLUMNS,
                 "id": f"eq.{session['user_id']}",
                 "limit": "1",
             },
@@ -357,6 +365,7 @@ class SupabaseStore:
         block: dict[str, Any] | None,
         client_action_id: str,
         world_id: str = PUBLIC_WORLD_ID,
+        admin_override: bool = False,
     ) -> dict[str, Any]:
         result = self._request(
             "POST",
@@ -370,11 +379,179 @@ class SupabaseStore:
                 "p_voxel_pos": {"x": int(local_x), "y": int(y), "z": int(local_z)},
                 "p_block_data": block if action == "place" else None,
                 "p_client_action_id": client_action_id,
+                "p_admin_override": bool(admin_override),
             },
         )
         if not isinstance(result, dict):
             raise SupabaseError("apply_voxel_edit returned an invalid result", payload=result)
         return result
+
+    def set_chunk_owner(
+        self,
+        *,
+        actor_id: str,
+        chunk_x: int,
+        chunk_z: int,
+        owner_id: str | None,
+        world_id: str = PUBLIC_WORLD_ID,
+    ) -> dict[str, Any]:
+        result = self._request(
+            "POST",
+            "rpc/admin_set_chunk_owner",
+            body={
+                "p_world_id": world_id,
+                "p_chunk_x": int(chunk_x),
+                "p_chunk_z": int(chunk_z),
+                "p_owner_id": owner_id,
+                "p_actor_id": actor_id,
+            },
+        )
+        if not isinstance(result, dict):
+            raise SupabaseError("admin_set_chunk_owner returned an invalid result", payload=result)
+        return result
+
+    # ------------------------------------------------------ roles and bans
+
+    def get_user(self, user_id: str) -> dict[str, Any] | None:
+        rows = self._request(
+            "GET",
+            "game_users",
+            query={"select": USER_COLUMNS, "id": f"eq.{user_id}", "limit": "1"},
+        )
+        if not isinstance(rows, list) or not rows:
+            return None
+        return dict(rows[0])
+
+    def find_users_by_name(self, name: str, limit: int = 8) -> list[dict[str, Any]]:
+        """Look an account up by display name, then by password username."""
+        needle = str(name or "").strip()
+        if not needle:
+            return []
+        escaped = needle.replace("\\", "\\\\").replace('"', '\\"')
+        rows = self._request(
+            "GET",
+            "game_users",
+            query={
+                "select": USER_COLUMNS,
+                "display_name": f'ilike."{escaped}"',
+                "limit": str(int(limit)),
+            },
+        )
+        found = [dict(row) for row in rows] if isinstance(rows, list) else []
+        if found:
+            return found
+
+        credentials = self._request(
+            "GET",
+            "game_password_credentials",
+            query={
+                "select": "user_id,username",
+                "username_normalized": f"eq.{needle.lower()}",
+                "limit": "1",
+            },
+        )
+        if not isinstance(credentials, list) or not credentials:
+            return []
+        user = self.get_user(str(credentials[0]["user_id"]))
+        return [user] if user else []
+
+    def list_staff(self) -> list[dict[str, Any]]:
+        rows = self._request(
+            "GET",
+            "game_users",
+            query={
+                "select": USER_COLUMNS,
+                "role": "in.(" + ",".join(STAFF_ROLES) + ")",
+                "order": "display_name.asc",
+                "limit": "200",
+            },
+        )
+        return [dict(row) for row in rows] if isinstance(rows, list) else []
+
+    def set_user_role(self, user_id: str, role: str) -> dict[str, Any]:
+        if role not in ("player", *STAFF_ROLES):
+            raise ValueError(f"unsupported role: {role}")
+        rows = self._request(
+            "PATCH",
+            "game_users",
+            query={"id": f"eq.{user_id}", "select": USER_COLUMNS},
+            body={"role": role, "updated_at": utc_now_iso()},
+            prefer="return=representation",
+        )
+        if not isinstance(rows, list) or not rows:
+            raise SupabaseError("Supabase did not return the updated account")
+        return dict(rows[0])
+
+    def set_user_ban(
+        self,
+        user_id: str,
+        *,
+        banned_until: str | None,
+        reason: str | None,
+        actor_id: str | None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "banned_until": banned_until,
+            "ban_reason": (reason or None) if banned_until else None,
+            "banned_at": utc_now_iso() if banned_until else None,
+            "banned_by": (actor_id or None) if banned_until else None,
+            "updated_at": utc_now_iso(),
+        }
+        rows = self._request(
+            "PATCH",
+            "game_users",
+            query={"id": f"eq.{user_id}", "select": USER_COLUMNS},
+            body=body,
+            prefer="return=representation",
+        )
+        if not isinstance(rows, list) or not rows:
+            raise SupabaseError("Supabase did not return the updated account")
+        return dict(rows[0])
+
+    def delete_sessions_for_user(self, user_id: str) -> None:
+        """Revoke every session an account holds, used when banning."""
+        self._request(
+            "DELETE",
+            "game_sessions",
+            query={"user_id": f"eq.{user_id}"},
+            prefer="return=minimal",
+        )
+
+    def log_admin_action(
+        self,
+        *,
+        actor_id: str | None,
+        actor_name: str | None,
+        action: str,
+        target_id: str | None = None,
+        target_name: str | None = None,
+        detail: dict[str, Any] | None = None,
+    ) -> None:
+        self._request(
+            "POST",
+            "admin_actions",
+            body={
+                "actor_id": actor_id or None,
+                "actor_name": actor_name or None,
+                "action": str(action)[:64],
+                "target_id": target_id or None,
+                "target_name": target_name or None,
+                "detail": detail or {},
+            },
+            prefer="return=minimal",
+        )
+
+    def recent_admin_actions(self, limit: int = 20) -> list[dict[str, Any]]:
+        rows = self._request(
+            "GET",
+            "admin_actions",
+            query={
+                "select": "id,actor_name,action,target_name,detail,created_at",
+                "order": "created_at.desc",
+                "limit": str(max(1, min(100, int(limit)))),
+            },
+        )
+        return [dict(row) for row in rows] if isinstance(rows, list) else []
 
 
 STORE = SupabaseStore()
