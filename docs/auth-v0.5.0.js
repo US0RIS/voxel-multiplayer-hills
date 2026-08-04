@@ -1,18 +1,4 @@
-/* Ridgewood — Discord authentication, v0.6.0
- *
- * Replaces the v0.4.2 full-screen sign-in gate. Same session handling, same
- * token storage, same authenticated-WebSocket wrapper — the difference is
- * purely where it surfaces: sign-in is now a control on the home screen, and
- * signing in is no longer a hard gate on loading the game module.
- *
- * Auth state drives two things:
- *   · the identity chip in the home header
- *   · whether world chat is unlocked (see home-v0.5.0.js)
- *
- * The game module is started by the home screen when the player picks a
- * server, or eagerly for signed-in players so that world chat is already live
- * on the home screen — chat has no socket of its own, it rides the renderer's.
- */
+/* Ridgewood unified authentication, v0.7.0. */
 (() => {
   'use strict';
 
@@ -28,35 +14,208 @@
   const identityName = document.querySelector('#home-username');
   const avatar = document.querySelector('#home-avatar');
   const logoutButton = document.querySelector('#home-logout');
-
   let gameStarted = false;
+  let authModal = null;
 
-  const loginUrl = () => `${AUTH_SERVER}/auth/discord`;
+  const discordLoginUrl = () => `${AUTH_SERVER}/auth/discord`;
 
-  for (const anchor of document.querySelectorAll('a[href$="/auth/discord"]')) {
-    anchor.href = loginUrl();
+  function installStyles() {
+    if (document.querySelector('link[data-ridgewood-login]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'login-v0.7.0.css?v=0.7.0';
+    link.dataset.ridgewoodLogin = 'true';
+    document.head.append(link);
   }
+
+  function slab(label, className, icon = '') {
+    return `<button type="button" class="rw-slab ${className}"><span class="rw-face">${icon ? `<span class="rw-auth-icon">${icon}</span>` : ''}<span>${label}</span></span></button>`;
+  }
+
+  const DISCORD_MARK = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.32 4.9A19.4 19.4 0 0 0 15.5 3.4a13.6 13.6 0 0 0-.62 1.27 17.9 17.9 0 0 0-5.37 0A13.3 13.3 0 0 0 8.88 3.4 19.3 19.3 0 0 0 4.06 4.9C1.01 9.46.18 13.9.6 18.29a19.5 19.5 0 0 0 5.92 3 14.5 14.5 0 0 0 1.27-2.06 12.7 12.7 0 0 1-2-.96c.17-.12.33-.25.49-.38a13.9 13.9 0 0 0 11.87 0c.16.14.32.26.49.38-.64.38-1.31.7-2 .96a14.3 14.3 0 0 0 1.27 2.06 19.4 19.4 0 0 0 5.92-3c.5-5.09-.84-9.49-3.5-13.39ZM8.35 15.6c-1.18 0-2.15-1.08-2.15-2.4s.95-2.42 2.15-2.42 2.17 1.09 2.15 2.42c0 1.32-.95 2.4-2.15 2.4Zm7.3 0c-1.18 0-2.15-1.08-2.15-2.4s.95-2.42 2.15-2.42 2.17 1.09 2.15 2.42c0 1.32-.95 2.4-2.15 2.4Z"/></svg>`;
+  const USER_MARK = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="8" y="3" width="8" height="8"/><rect x="5" y="13" width="14" height="8"/><rect x="3" y="16" width="3" height="5"/><rect x="18" y="16" width="3" height="5"/></svg>`;
+
+  function createAuthModal() {
+    if (authModal) return authModal;
+    const modal = document.createElement('section');
+    modal.id = 'rw-auth-modal';
+    modal.hidden = true;
+    modal.setAttribute('aria-label', 'Log in');
+    modal.innerHTML = `
+      <div class="rw-auth-backdrop" data-auth-close></div>
+      <div class="rw-auth-card" role="dialog" aria-modal="true" aria-labelledby="rw-auth-title">
+        <div class="rw-auth-head">
+          <div><h2 id="rw-auth-title">Log in</h2><p id="rw-auth-subtitle">Choose how you want to enter Ridgewood.</p></div>
+          <button class="rw-auth-close" type="button" aria-label="Close" data-auth-close>×</button>
+        </div>
+        <div class="rw-auth-options">
+          ${slab('Continue with Discord', 'rw-auth-option rw-auth-option--discord', DISCORD_MARK)}
+          ${slab('Username & password', 'rw-auth-option rw-auth-option--password', USER_MARK)}
+        </div>
+        <form class="rw-auth-form" hidden autocomplete="on">
+          <div class="rw-auth-field"><label for="rw-auth-username">Username</label><input id="rw-auth-username" name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]+" autocomplete="username" required /></div>
+          <div class="rw-auth-field"><label for="rw-auth-password">Password</label><input id="rw-auth-password" name="password" type="password" minlength="10" maxlength="256" autocomplete="current-password" required /></div>
+          <div class="rw-auth-field rw-auth-confirm" hidden><label for="rw-auth-password-confirm">Confirm password</label><input id="rw-auth-password-confirm" name="passwordConfirm" type="password" minlength="10" maxlength="256" autocomplete="new-password" /></div>
+          <p class="rw-auth-error" role="alert" aria-live="polite"></p>
+          ${slab('Log in', 'rw-auth-submit')}
+          <div class="rw-auth-row"><button type="button" class="rw-auth-link rw-auth-back">← Other login methods</button><button type="button" class="rw-auth-link rw-auth-switch">Create an account</button></div>
+          <p class="rw-auth-note">Usernames may contain letters, numbers, periods, underscores, and hyphens. Passwords must be at least 10 characters.</p>
+        </form>
+      </div>`;
+    document.body.append(modal);
+
+    const options = modal.querySelector('.rw-auth-options');
+    const form = modal.querySelector('.rw-auth-form');
+    const title = modal.querySelector('#rw-auth-title');
+    const subtitle = modal.querySelector('#rw-auth-subtitle');
+    const confirmField = modal.querySelector('.rw-auth-confirm');
+    const confirmInput = modal.querySelector('#rw-auth-password-confirm');
+    const passwordInput = modal.querySelector('#rw-auth-password');
+    const submit = modal.querySelector('.rw-auth-submit');
+    const submitLabel = submit.querySelector('.rw-face span:last-child');
+    const switchMode = modal.querySelector('.rw-auth-switch');
+    const error = modal.querySelector('.rw-auth-error');
+    let mode = 'login';
+
+    function setMode(next) {
+      mode = next;
+      const registering = mode === 'register';
+      title.textContent = registering ? 'Create account' : 'Log in';
+      subtitle.textContent = registering ? 'Choose a username and password for Ridgewood.' : 'Enter your Ridgewood username and password.';
+      confirmField.hidden = !registering;
+      confirmInput.required = registering;
+      passwordInput.autocomplete = registering ? 'new-password' : 'current-password';
+      submitLabel.textContent = registering ? 'Create account' : 'Log in';
+      switchMode.textContent = registering ? 'I already have an account' : 'Create an account';
+      error.textContent = '';
+    }
+
+    function showPassword() {
+      options.hidden = true;
+      form.hidden = false;
+      setMode('login');
+      requestAnimationFrame(() => modal.querySelector('#rw-auth-username').focus());
+    }
+
+    function showOptions() {
+      form.hidden = true;
+      options.hidden = false;
+      title.textContent = 'Log in';
+      subtitle.textContent = 'Choose how you want to enter Ridgewood.';
+      error.textContent = '';
+    }
+
+    modal.querySelector('.rw-auth-option--discord').addEventListener('click', () => { window.location.href = discordLoginUrl(); });
+    modal.querySelector('.rw-auth-option--password').addEventListener('click', showPassword);
+    modal.querySelector('.rw-auth-back').addEventListener('click', showOptions);
+    switchMode.addEventListener('click', () => setMode(mode === 'login' ? 'register' : 'login'));
+    for (const close of modal.querySelectorAll('[data-auth-close]')) close.addEventListener('click', closeLogin);
+    modal.addEventListener('keydown', event => { if (event.key === 'Escape') closeLogin(); });
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      error.textContent = '';
+      const username = String(form.elements.username.value || '').trim();
+      const password = String(form.elements.password.value || '');
+      if (mode === 'register' && password !== String(form.elements.passwordConfirm.value || '')) {
+        error.textContent = 'Passwords do not match.';
+        return;
+      }
+      submit.disabled = true;
+      try {
+        const response = await fetch(`${AUTH_SERVER}/auth/password/${mode}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          cache: 'no-store',
+          credentials: 'omit'
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.token || !payload.user) throw new Error(authErrorMessage(payload.error, response.status));
+        localStorage.setItem(TOKEN_KEY, payload.token);
+        localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
+        window.location.reload();
+      } catch (failure) {
+        error.textContent = failure instanceof Error ? failure.message : 'Login failed.';
+      } finally {
+        submit.disabled = false;
+      }
+    });
+
+    modal._showOptions = showOptions;
+    authModal = modal;
+    return modal;
+  }
+
+  function authErrorMessage(code, status) {
+    const messages = {
+      invalid_username: 'Use 3–24 letters, numbers, periods, underscores, or hyphens.',
+      password_too_short: 'Password must be at least 10 characters.',
+      password_too_long: 'Password is too long.',
+      username_taken: 'That username is already taken.',
+      invalid_credentials: 'Incorrect username or password.',
+      account_temporarily_locked: 'This account is temporarily locked after repeated failed attempts.',
+      too_many_attempts: 'Too many login attempts. Try again later.',
+      registration_unavailable: 'Account creation is temporarily unavailable.',
+      login_unavailable: 'Username login is temporarily unavailable.'
+    };
+    return messages[code] || (status >= 500 ? 'The login server is temporarily unavailable.' : 'Login failed.');
+  }
+
+  function openLogin() {
+    installStyles();
+    const modal = createAuthModal();
+    modal._showOptions();
+    modal.hidden = false;
+    document.documentElement.dataset.authModal = 'open';
+    setTimeout(() => modal.querySelector('.rw-auth-option--discord')?.focus(), 0);
+  }
+
+  function closeLogin() {
+    if (!authModal) return;
+    authModal.hidden = true;
+    delete document.documentElement.dataset.authModal;
+  }
+
+  function relabelLoginControls() {
+    for (const anchor of document.querySelectorAll('a[href$="/auth/discord"], #home-login')) {
+      anchor.href = '#login';
+      anchor.dataset.loginChooser = 'true';
+      const text = anchor.querySelector('.rw-face span:last-child') || anchor.querySelector('span:last-child');
+      if (text) text.textContent = 'Log in';
+      else anchor.textContent = 'Log in';
+    }
+    const lockTitle = document.querySelector('.rw-lock-title');
+    const lockSub = document.querySelector('.rw-lock-sub');
+    if (lockTitle) lockTitle.textContent = 'World chat is locked';
+    if (lockSub) lockSub.textContent = 'Log in to use world chat.';
+  }
+
+  document.addEventListener('click', event => {
+    const trigger = event.target.closest('[data-login-chooser], a[href="#login"], #home-login');
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openLogin();
+  }, true);
 
   function readCallbackFragment() {
     const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const token = fragment.get('auth_token');
     const username = fragment.get('username');
+    const provider = fragment.get('provider') || 'discord';
     const error = fragment.get('auth_error');
-
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
-      if (username) localStorage.setItem(USER_KEY, JSON.stringify({ username, provider: 'discord' }));
+      if (username) localStorage.setItem(USER_KEY, JSON.stringify({ username, provider }));
     }
-
     if (token || error) history.replaceState(null, '', window.location.pathname + window.location.search);
-    return { token, username, error };
+    return { token, error };
   }
 
   async function validateSession(token) {
     if (!token) return null;
-    const response = await fetch(`${AUTH_SERVER}/auth/me?token=${encodeURIComponent(token)}`, {
-      cache: 'no-store', credentials: 'omit'
-    });
+    const response = await fetch(`${AUTH_SERVER}/auth/me?token=${encodeURIComponent(token)}`, { cache: 'no-store', credentials: 'omit' });
     if (!response.ok) return null;
     const payload = await response.json();
     return payload?.authenticated ? payload.user : null;
@@ -65,24 +224,16 @@
   function installAuthenticatedWebSocket(token) {
     if (window.__RIDGEWOOD_AUTH_SOCKET_INSTALLED__ || !token) return;
     const NativeWebSocket = window.WebSocket;
-
     function AuthenticatedWebSocket(url, protocols) {
       const next = new URL(String(url), window.location.href);
-      const serverHost = new URL(AUTH_SERVER).host;
-      if (next.host === serverHost && !next.searchParams.has('token')) next.searchParams.set('token', token);
-      return protocols === undefined
-        ? new NativeWebSocket(next.toString())
-        : new NativeWebSocket(next.toString(), protocols);
+      if (next.host === new URL(AUTH_SERVER).host && !next.searchParams.has('token')) next.searchParams.set('token', token);
+      return protocols === undefined ? new NativeWebSocket(next.toString()) : new NativeWebSocket(next.toString(), protocols);
     }
-
     AuthenticatedWebSocket.prototype = NativeWebSocket.prototype;
     Object.defineProperties(AuthenticatedWebSocket, {
-      CONNECTING: { value: NativeWebSocket.CONNECTING },
-      OPEN: { value: NativeWebSocket.OPEN },
-      CLOSING: { value: NativeWebSocket.CLOSING },
-      CLOSED: { value: NativeWebSocket.CLOSED }
+      CONNECTING: { value: NativeWebSocket.CONNECTING }, OPEN: { value: NativeWebSocket.OPEN },
+      CLOSING: { value: NativeWebSocket.CLOSING }, CLOSED: { value: NativeWebSocket.CLOSED }
     });
-
     window.WebSocket = AuthenticatedWebSocket;
     window.__RIDGEWOOD_AUTH_SOCKET_INSTALLED__ = true;
   }
@@ -92,7 +243,7 @@
     gameStarted = true;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = 'game-loader-v0.6.0.js?v=0.6.0';
+    script.src = 'game-loader-v0.6.0.js?v=0.7.0';
     script.onerror = () => {
       gameStarted = false;
       window.RIDGEWOOD_HOME?.setStatus('offline', 'Game module failed to load');
@@ -100,23 +251,15 @@
     document.body.append(script);
   }
 
-  function avatarUrl(user) {
-    if (!user) return '';
-    if (user.avatarUrl || user.avatar_url) return user.avatarUrl || user.avatar_url;
-    if (user.id && user.avatar) return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
-    return '';
-  }
-
-  function displayName(user) {
-    return user?.globalName || user?.global_name || user?.displayName || user?.username || user?.name || 'Adventurer';
-  }
+  const displayName = user => user?.globalName || user?.global_name || user?.displayName || user?.username || user?.name || 'Adventurer';
+  const avatarUrl = user => user?.avatarUrl || user?.avatar_url || (user?.id && user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64` : '');
 
   function showSignedIn(user) {
     const name = displayName(user);
     if (identityName) identityName.textContent = name;
     const url = avatarUrl(user);
     if (avatar) {
-      if (url) { avatar.src = url; avatar.alt = `${name}'s Discord avatar`; }
+      if (url) { avatar.src = url; avatar.alt = `${name}'s avatar`; }
       else { avatar.removeAttribute('src'); avatar.alt = ''; }
     }
     loginButton?.setAttribute('hidden', '');
@@ -130,6 +273,7 @@
     identity?.setAttribute('hidden', '');
     document.documentElement.dataset.authenticated = 'false';
     window.RIDGEWOOD_HOME?.setAuthenticated(false);
+    relabelLoginControls();
   }
 
   function activate(user) {
@@ -147,34 +291,28 @@
       const response = await fetch(`${AUTH_SERVER}/health`, { cache: 'no-store' });
       if (!response.ok) throw new Error(String(response.status));
       const payload = await response.json().catch(() => ({}));
-      const version = payload?.version ? ` · v${payload.version}` : '';
-      window.RIDGEWOOD_HOME?.setStatus('online', `Ridgewood Main online${version}`);
-    } catch {
-      window.RIDGEWOOD_HOME?.setStatus('offline', 'Server unreachable');
-    }
+      window.RIDGEWOOD_HOME?.setStatus('online', `Ridgewood Main online${payload?.version ? ` · v${payload.version}` : ''}`);
+    } catch { window.RIDGEWOOD_HOME?.setStatus('offline', 'Server unreachable'); }
   }
 
   async function initialize() {
+    installStyles();
+    relabelLoginControls();
     const callback = readCallbackFragment();
     if (callback.error) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
       showSignedOut();
-      window.RIDGEWOOD_HOME?.setStatus('offline', `Discord sign-in failed: ${callback.error.replaceAll('_', ' ')}`);
+      window.RIDGEWOOD_HOME?.setStatus('offline', `Sign-in failed: ${callback.error.replaceAll('_', ' ')}`);
       return;
     }
-
     const token = callback.token || localStorage.getItem(TOKEN_KEY) || '';
     if (!token) { showSignedOut(); checkServer(); return; }
-
     try {
       const user = await validateSession(token);
       if (!user) {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        showSignedOut();
-        checkServer();
-        return;
+        localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
+        showSignedOut(); checkServer(); return;
       }
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       activate(user);
@@ -187,25 +325,17 @@
   }
 
   logoutButton?.addEventListener('click', () => window.RIDGEWOOD_AUTH_API.logout());
-
   window.RIDGEWOOD_AUTH_API = Object.freeze({
-    loginUrl,
+    loginUrl: discordLoginUrl,
+    openLogin,
     startGame: startGameModule,
     isAuthenticated: () => document.documentElement.dataset.authenticated === 'true',
     getToken: () => localStorage.getItem(TOKEN_KEY) || '',
-    getUser() {
-      try { return JSON.parse(localStorage.getItem(USER_KEY) || 'null'); }
-      catch { return null; }
-    },
+    getUser() { try { return JSON.parse(localStorage.getItem(USER_KEY) || 'null'); } catch { return null; } },
     async logout() {
       const token = localStorage.getItem(TOKEN_KEY) || '';
-      try {
-        if (token) await fetch(`${AUTH_SERVER}/auth/logout?token=${encodeURIComponent(token)}`, { method: 'POST', cache: 'no-store' });
-      } finally {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        window.location.reload();
-      }
+      try { if (token) await fetch(`${AUTH_SERVER}/auth/logout?token=${encodeURIComponent(token)}`, { method: 'POST', cache: 'no-store' }); }
+      finally { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); window.location.reload(); }
     }
   });
 
