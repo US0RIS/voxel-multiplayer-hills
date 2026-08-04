@@ -1,10 +1,10 @@
-/* Ridgewood persistent-world controls — v0.5.0 alpha */
+/* Ridgewood persistent-world controls — v0.5.1 alpha */
 #world-hud {
   position: fixed;
   left: 18px;
   bottom: 72px;
   z-index: 24;
-  width: min(320px, calc(100vw - 36px));
+  width: min(332px, calc(100vw - 36px));
   display: none;
   color: #f2f3f5;
   border: 1px solid rgba(255,255,255,.14);
@@ -31,10 +31,11 @@ html[data-ridgewood-view="game"] #world-hud { display: block; }
 .world-hud-title { display: grid; gap: 2px; min-width: 0; }
 .world-hud-title strong { font-size: 13px; letter-spacing: .02em; }
 #world-chunk-owner { color: #aeb5ad; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.world-hud-head-actions { display: flex; gap: 6px; align-items: center; }
 
-#world-claim {
+#world-claim,
+#world-hud-toggle {
   flex: none;
-  min-width: 82px;
   padding: 7px 10px;
   border: 1px solid rgba(160,220,116,.42);
   border-radius: 6px;
@@ -44,11 +45,21 @@ html[data-ridgewood-view="game"] #world-hud { display: block; }
   font-weight: 800;
   cursor: pointer;
 }
+#world-claim { min-width: 82px; }
+#world-hud-toggle { min-width: 34px; padding-inline: 8px; background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.16); }
 #world-claim:hover { background: #517f3a; }
+#world-hud-toggle:hover { background: rgba(255,255,255,.12); }
 #world-claim:disabled { opacity: .45; cursor: default; }
 
-.world-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 10px 12px 7px; }
-.world-block {
+#world-hud[data-collapsed="true"] { width: min(260px, calc(100vw - 36px)); }
+#world-hud[data-collapsed="true"] .world-hud-body { display: none; }
+#world-hud[data-collapsed="true"] .world-hud-head { border-bottom: 0; }
+
+.world-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 10px 12px 0; }
+.world-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 8px 12px; }
+
+.world-block,
+.world-action {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -59,33 +70,23 @@ html[data-ridgewood-view="game"] #world-hud { display: block; }
   color: #d8ddd8;
   background: rgba(255,255,255,.045);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
 }
 .world-block[aria-pressed="true"] { border-color: #88c85c; color: #fff; background: rgba(107,164,68,.28); }
+.world-action[aria-pressed="true"] { color: #fff; border-color: rgba(255,255,255,.26); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+#world-place[aria-pressed="true"] { background: #466f31; border-color: rgba(151,218,105,.55); }
+#world-remove[aria-pressed="true"] { background: #73353a; border-color: rgba(255,123,130,.55); }
+.world-action:disabled { opacity: .42; cursor: default; }
+
 .world-swatch { width: 13px; height: 13px; border: 1px solid rgba(0,0,0,.35); box-shadow: inset 0 1px rgba(255,255,255,.22); }
 .world-swatch--grass { background: #62ad31; }
 .world-swatch--dirt { background: #70401d; }
 .world-swatch--stone { background: #52545a; }
 
-.world-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 0 12px 10px; }
-.world-action {
-  padding: 8px;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 6px;
-  color: #fff;
-  background: #33383a;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-#world-place { background: #466f31; }
-#world-remove { background: #67383a; }
-.world-action:disabled { opacity: .42; cursor: default; }
-
 #world-feedback {
   min-height: 27px;
-  padding: 6px 12px 9px;
+  padding: 2px 12px 9px;
   color: #aeb5ad;
   font-size: 10px;
   line-height: 1.35;
@@ -102,7 +103,74 @@ html[data-ridgewood-view="game"] #world-hud { display: block; }
 }
 .world-shortcuts kbd { margin: 0 2px; }
 
+#world-block-loader {
+  position: fixed;
+  left: 18px;
+  top: 18px;
+  z-index: 23;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(260px, calc(100vw - 36px));
+  padding: 8px 11px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 999px;
+  color: #d8ddd8;
+  background: rgba(18,21,20,.82);
+  box-shadow: 0 8px 24px rgba(0,0,0,.28);
+  backdrop-filter: blur(8px);
+  font: 700 10px/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+  pointer-events: none;
+}
+#world-block-loader[hidden] { display: none; }
+.world-loader-wheel {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border: 2px solid rgba(255,255,255,.22);
+  border-top-color: #9edb72;
+  border-radius: 50%;
+  animation: world-loader-spin .75s linear infinite;
+}
+@keyframes world-loader-spin { to { transform: rotate(360deg); } }
+
+canvas[data-build-mode="place"] { cursor: crosshair; }
+canvas[data-build-mode="delete"] { cursor: not-allowed; }
+
+.world-chat-command {
+  display: grid;
+  gap: 5px;
+  margin: 10px 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(139,202,95,.24);
+  border-left: 3px solid #7fbd55;
+  border-radius: 7px;
+  color: #d8ddd8;
+  background: rgba(57,80,45,.18);
+  font: 12px/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.world-chat-command strong { color: #eef7e8; font-size: 12px; }
+.world-chat-command > span { color: #adb7ac; }
+.world-chat-command-actions { display: grid; gap: 6px; margin-top: 3px; }
+.world-chat-command-actions button {
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 5px;
+  color: #eef7e8;
+  background: rgba(255,255,255,.06);
+  text-align: left;
+  font: 700 11px/1.25 Inter, ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+.world-chat-command-actions button:hover { background: rgba(127,189,85,.18); border-color: rgba(127,189,85,.45); }
+
 @media (max-width: 700px) {
-  #world-hud { left: 8px; bottom: 58px; width: min(285px, calc(100vw - 16px)); }
+  #world-hud { left: 8px; bottom: 58px; width: min(295px, calc(100vw - 16px)); }
+  #world-hud[data-collapsed="true"] { width: min(245px, calc(100vw - 16px)); }
+  #world-block-loader { left: 8px; top: 8px; }
   .world-shortcuts { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-loader-wheel { animation-duration: 1.6s; }
 }
