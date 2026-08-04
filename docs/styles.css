@@ -72,7 +72,7 @@ canvas {
 #build-badge {
   position: fixed;
   top: 18px;
-  right: 18px;
+  right: 72px;
   z-index: 20;
   display: grid;
   gap: 3px;
