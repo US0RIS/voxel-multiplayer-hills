@@ -66,8 +66,10 @@ voxel-multiplayer-hills/
 │   ├── server-source.py             readable server source of truth
 │   └── parts/                       generated, do not edit by hand
 ├── tools/build-parts.py             regenerates and verifies both part sets
-├── tests/                           protocol, UI, end-to-end and CSS-isolation suites
+├── tools/reconcile-chat-parts.py    repairs chat part/source drift
+├── tests/                           protocol, UI, permissions, loader-chain suites
 ├── CHAT.md
+├── ADMIN.md
 ├── render.yaml
 ├── local-dev.py
 ├── start-local.command
@@ -94,6 +96,19 @@ python3 tools/build-parts.py --check  # verify parts match the sources
 
 `--check` is worth running before every deploy — it is what would have caught the 4.2.1 corruption.
 
+**Never rebuild the chat parts without checking them first.** The parts are what
+production runs. If they have drifted ahead of `chat-source-v4.3.0.js` — which
+they currently have, by about 1.4 KB — a plain rebuild deletes the difference.
+
+```bash
+python3 tools/reconcile-chat-parts.py --check   # report drift, change nothing
+python3 tools/reconcile-chat-parts.py           # repair it (parts win)
+```
+
+`validate-persistent-world.py` warns when the two disagree, and fails on it with
+`--strict` once you have reconciled them. See
+[`ADMIN.md`](ADMIN.md#the-chat-module-is-untouched).
+
 ## Deploy
 
 1. Upload this folder's **contents** to the repository root, preserving `docs/`, `server/`, and `tools/`.
@@ -103,4 +118,5 @@ python3 tools/build-parts.py --check  # verify parts match the sources
 
 Render's free tier uses an ephemeral filesystem, so `chat-state.json` is lost when the instance restarts. Point `CHAT_STATE_PATH` at a persistent disk to keep history across restarts in production.
 
-See [`CHAT.md`](CHAT.md) for the full command and shortcut reference.
+See [`CHAT.md`](CHAT.md) for the full command and shortcut reference, and
+[`ADMIN.md`](ADMIN.md) for staff roles, moderation, and the admin control panel.

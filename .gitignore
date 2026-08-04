@@ -5,6 +5,9 @@ server/ridgewood.db-wal
 server/chat-state.json
 server/*.tmp
 
+# Node (test dependencies only)
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]
