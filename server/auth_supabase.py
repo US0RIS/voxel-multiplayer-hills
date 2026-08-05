@@ -20,6 +20,36 @@ from password_auth import PasswordAuthError
 from supabase_store import STORE, SupabaseError
 
 
+class DiscordRateLimited(RuntimeError):
+    """Discord (or Cloudflare in front of it) returned 429 for an OAuth call.
+
+    Worth distinguishing from a genuine auth failure: nothing is misconfigured,
+    the caller simply has to wait. Render's free tier shares outbound IPs
+    between tenants, so this can trigger without any traffic of our own.
+    """
+
+    def __init__(self, retry_after: float, scope: str = "unknown"):
+        super().__init__(f"Discord rate limited the request (retry after {retry_after:.0f}s)")
+        self.retry_after = retry_after
+        self.scope = scope
+
+
+def _retry_after_seconds(exc: urllib.error.HTTPError) -> tuple[float, str]:
+    """Read Discord's retry hint from the header, falling back to the body."""
+    scope = exc.headers.get("X-RateLimit-Scope") or ("global" if exc.headers.get("X-RateLimit-Global") else "unknown")
+    header = exc.headers.get("Retry-After")
+    try:
+        if header is not None:
+            return max(1.0, float(header)), scope
+    except (TypeError, ValueError):
+        pass
+    try:
+        payload = json.loads(exc.read().decode("utf-8"))
+        return max(1.0, float(payload.get("retry_after", 60))), scope
+    except Exception:
+        return 60.0, scope
+
+
 @dataclass(frozen=True)
 class AuthResponse:
     status: int
@@ -187,6 +217,13 @@ def handle_discord_callback(query: str) -> AuthResponse:
         )
         raw_token, user = _issue_session(row, provider="discord")
         return _redirect(token=raw_token, username=user["username"], provider="discord", headers={"Set-Cookie": _cookie(raw_token)})
+    except DiscordRateLimited as exc:
+        print(
+            f"Discord rate limited sign-in ({exc.scope} scope); "
+            f"retry after {exc.retry_after:.0f}s. Nothing is misconfigured.",
+            flush=True,
+        )
+        return _redirect(error="discord_busy")
     except (KeyError, ValueError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, SupabaseError) as exc:
         print(f"Discord auth error: {type(exc).__name__}: {exc}", flush=True)
         return _redirect(error="auth_failed")
@@ -377,8 +414,13 @@ def _discord_post(path: str, values: dict[str, str]) -> dict[str, Any]:
         method="POST",
         headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "User-Agent": "Ridgewood/0.7.0"},
     )
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        return json.loads(response.read())
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+            return json.loads(response.read())
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            raise DiscordRateLimited(*_retry_after_seconds(exc)) from exc
+        raise
 
 
 def _discord_get(path: str, headers: dict[str, str]) -> dict[str, Any]:
@@ -387,8 +429,13 @@ def _discord_get(path: str, headers: dict[str, str]) -> dict[str, Any]:
         method="GET",
         headers={**headers, "Accept": "application/json", "User-Agent": "Ridgewood/0.7.0"},
     )
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        return json.loads(response.read())
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+            return json.loads(response.read())
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            raise DiscordRateLimited(*_retry_after_seconds(exc)) from exc
+        raise
 
 
 def _json(status: int, body: dict[str, Any]) -> AuthResponse:
