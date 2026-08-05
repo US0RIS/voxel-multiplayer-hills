@@ -40,6 +40,9 @@
       account_temporarily_locked: 'This account is temporarily locked after repeated failed attempts.',
       too_many_attempts: 'Too many login attempts. Try again later.',
       account_banned: 'This account is banned.',
+      discord_busy: 'Discord is rate-limiting sign-ins right now. Wait a minute and try again.',
+      discord_denied: 'Discord sign-in was cancelled.',
+      invalid_state: 'That sign-in link expired. Please try again.',
       registration_unavailable: 'Account creation is temporarily unavailable.',
       login_unavailable: 'Username login is temporarily unavailable.'
     };
@@ -278,7 +281,7 @@
     if (callback.error) {
       localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
       showSignedOut();
-      window.RIDGEWOOD_HOME?.setStatus('offline', `Sign-in failed: ${callback.error.replaceAll('_',' ')}`);
+      window.RIDGEWOOD_HOME?.setStatus('offline', errorMessage(callback.error) || `Sign-in failed: ${callback.error.replaceAll('_',' ')}`);
       return;
     }
     const token = callback.token || localStorage.getItem(TOKEN_KEY) || '';
