@@ -26,7 +26,12 @@ def mkuser(name, role='player', banned_until=None):
     return USERS[uid]
 
 CALLS = []
+# username_normalized -> user id, mirroring game_password_credentials.
+LOGINS = {}
 STORE.find_users_by_name = lambda n, limit=8: [dict(u) for u in USERS.values() if u["display_name"].lower() == n.lower()]
+STORE.find_user_by_password_username = lambda n: (
+    dict(USERS[LOGINS[str(n or "").strip().lower()]]) if str(n or "").strip().lower() in LOGINS else None
+)
 def set_ban(uid, *, banned_until, reason, actor_id):
     USERS[uid].update(banned_until=banned_until, ban_reason=reason, banned_by=actor_id)
     CALLS.append(("set_ban", USERS[uid]["display_name"], banned_until is not None))
@@ -40,6 +45,10 @@ STORE.log_admin_action = lambda **kw: CALLS.append(("log", kw.get("action"), kw.
 
 def actor(row):
     return {"user_id": row["id"], "username": row["display_name"], "role": row["role"]}
+
+def mklogin(username, row):
+    LOGINS[username.lower()] = row["id"]
+    return row
 
 admin_row = mkuser("Admin", "admin")
 mod_row   = mkuser("Mod", "moderator")
@@ -76,6 +85,34 @@ check("admin sets a bogus role",        lambda: admin.set_account_role(actor(adm
 check("bad duration text",              lambda: admin.ban_account(actor(admin_row), "Mod", "banana"), "invalid_duration")
 check("unban someone not banned",       lambda: admin.unban_account(actor(admin_row), "Mod"), "not_banned")
 check("unban a banned account",         lambda: admin.unban_account(actor(admin_row), "Griefer"))
+
+# --- identity: login username beats display name ----------------------------
+# The real account: login username "Admin", but it has since been renamed.
+real = mkuser("Ridgewood Owner", "admin")
+mklogin("Admin", real)
+# An impostor who simply set their display name to "Admin".
+impostor = mkuser("Admin")
+
+resolved = admin.resolve_target("Admin")
+results.append((resolved["id"] == real["id"],
+                "resolve_target prefers the login username over a matching display name",
+                f"resolved to {resolved['display_name']}"))
+
+# Bootstrap must promote the login username, never the impostor.
+admin.ADMIN_BOOTSTRAP_NAMES = ("admin",)
+impostor["role"] = "player"
+admin.bootstrap_admins()
+results.append((USERS[impostor["id"]]["role"] == "player",
+                "bootstrap does not promote a display-name impostor",
+                f"impostor role = {USERS[impostor['id']]['role']}"))
+results.append((USERS[real["id"]]["role"] == "admin",
+                "bootstrap keeps the real login-username account admin", ""))
+
+# Display names still resolve when no login username matches (Discord accounts).
+discord_only = mkuser("DiscordFriend")
+resolved2 = admin.resolve_target("DiscordFriend")
+results.append((resolved2["id"] == discord_only["id"],
+                "display name still resolves when there is no login username", ""))
 
 # --- ban state --------------------------------------------------------------
 banned = mkuser("Temp", "player", "2099-01-01T00:00:00Z")
