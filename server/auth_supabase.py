@@ -202,15 +202,40 @@ def _issue_session(row: dict[str, Any], provider: str) -> tuple[str, dict[str, A
     return raw_token, user
 
 
-def extract_session_token(headers: dict[str, str], query: str = "") -> str:
+def session_token_candidates(headers: dict[str, str], query: str = "") -> list[str]:
+    """Every token the caller might have supplied, best first.
+
+    The explicit ?token= wins over the cookie. A stale Discord cookie used to
+    shadow a perfectly valid password-login token, so password accounts silently
+    connected as anonymous guests with no role while Discord accounts -- whose
+    session IS the cookie -- worked fine.
+    """
+    candidates: list[str] = []
+
+    if query:
+        candidates.append((urllib.parse.parse_qs(query).get("token") or [""])[0])
+
     auth_header = headers.get("authorization", "")
     if auth_header.lower().startswith("bearer "):
-        return auth_header[7:].strip()
+        candidates.append(auth_header[7:].strip())
+
     for item in headers.get("cookie", "").split(";"):
         name, sep, value = item.strip().partition("=")
         if sep and name == COOKIE_NAME:
-            return urllib.parse.unquote(value)
-    return (urllib.parse.parse_qs(query).get("token") or [""])[0] if query else ""
+            candidates.append(urllib.parse.unquote(value))
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for token in candidates:
+        if token and token not in seen:
+            seen.add(token)
+            ordered.append(token)
+    return ordered
+
+
+def extract_session_token(headers: dict[str, str], query: str = "") -> str:
+    candidates = session_token_candidates(headers, query)
+    return candidates[0] if candidates else ""
 
 
 def authenticate_session(raw_token: str) -> Optional[dict[str, Any]]:
@@ -255,7 +280,16 @@ def revoke_session(raw_token: str) -> None:
 
 
 def websocket_user(headers: dict[str, str], query: str = "") -> Optional[dict[str, Any]]:
-    return authenticate_session(extract_session_token(headers, query))
+    """Authenticate a socket using whichever supplied token actually resolves.
+
+    Trying every candidate means one stale credential -- typically an expired
+    cookie left over from an earlier Discord session -- cannot mask a valid one.
+    """
+    for token in session_token_candidates(headers, query):
+        user = authenticate_session(token)
+        if user:
+            return user
+    return None
 
 
 def safe_display_name(user: Optional[dict[str, Any]]) -> str:
