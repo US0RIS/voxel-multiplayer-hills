@@ -20,9 +20,38 @@ def patch_admin_runtime(source: str) -> str:
     source = _replace(
         source,
         "import auth\nfrom world_persistence import WORLD, SupabaseError\nfrom collections import deque",
-        "import auth\nimport admin\nfrom admin import AdminError\n"
+        "import auth\nimport admin\nimport traceback\nfrom admin import AdminError\n"
         "from world_persistence import WORLD, SupabaseError\nfrom collections import deque",
         "admin imports",
+    )
+
+    # ------------------------------------------------- never fail silently
+    #
+    # handle() only caught ConnectionError/OSError/TimeoutError/ValueError, so
+    # anything else -- AttributeError, TypeError, SupabaseError -- killed the
+    # handler thread before the WebSocket handshake reply was written. The
+    # browser saw a closed socket and reported a useless "bad response from the
+    # server" with close code 1006, and nothing was logged. Now the traceback is
+    # printed and the client gets a real status code.
+    source = _replace(
+        source,
+        """        except (ConnectionError, OSError, TimeoutError, ValueError, socket.timeout):
+            pass
+        finally:""",
+        """        except (ConnectionError, OSError, TimeoutError, ValueError, socket.timeout):
+            pass
+        except Exception:
+            print("Unhandled error while serving a request:", flush=True)
+            traceback.print_exc()
+            if client is None:
+                try:
+                    self._send_http(
+                        500, b"Internal server error.\\n", "text/plain; charset=utf-8"
+                    )
+                except OSError:
+                    pass
+        finally:""",
+        "unhandled error reporting",
     )
 
     # -------------------------------------------------- role on the client
@@ -93,6 +122,15 @@ def patch_admin_runtime(source: str) -> str:
                     self._send_http(401, b"Authentication required.\\n", "text/plain; charset=utf-8")
                     return''',
         '''                auth_user = auth.websocket_user(headers, parsed_target.query)
+                # With AUTH_REQUIRED=0 an unusable token silently becomes a
+                # guest connection, which looks identical to "the admin panel
+                # is broken". Say so instead of hiding it.
+                if not auth_user and auth.extract_session_token(headers, parsed_target.query):
+                    print(
+                        "A session token was supplied but did not resolve; "
+                        "connecting as a guest with no role.",
+                        flush=True,
+                    )
                 if auth.AUTH_REQUIRED and not auth_user:
                     self._send_http(401, b"Authentication required.\\n", "text/plain; charset=utf-8")
                     return
@@ -115,7 +153,12 @@ def patch_admin_runtime(source: str) -> str:
             client.user_id = str(auth_user.get("user_id") or "")''',
         '''            client.auth_user = auth_user
             client.role = admin.role_of(auth_user)
-            client.user_id = str(auth_user.get("user_id") or "")''',
+            client.user_id = str(auth_user.get("user_id") or "")
+            print(
+                f"Authenticated {auth_user.get('username')} "
+                f"(account {client.user_id}) as role={client.role}",
+                flush=True,
+            )''',
         "client role",
     )
 
@@ -206,6 +249,14 @@ def patch_admin_runtime(source: str) -> str:
     )
 
     # --------------------------------------------------------- startup log
+    source = _replace(
+        source,
+        '''                    "supabase": WORLD.ready, "persistentWorld": WORLD.ready,''',
+        '''                    "supabase": WORLD.ready, "persistentWorld": WORLD.ready,
+                    "adminRoles": True, "adminSchema": admin.schema_status(),''',
+        "health admin status",
+    )
+
     source = _replace(
         source,
         '''    print(f"Discord auth: {'configured' if auth.configured() else 'not configured'} · required={auth.AUTH_REQUIRED}", flush=True)''',
