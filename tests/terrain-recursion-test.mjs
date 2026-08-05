@@ -78,7 +78,8 @@ function extract(name) {
 const NAMES = ['fbm', 'valueNoise', 'hashGrid', 'smoothCurve', 'smoothstep', 'mix', 'clamp',
   'getBaseTerrainHeight', 'getTerrainCellHeight', 'getTerrainHeight', 'baseTerrainHeightForBuild',
   'overlayColumnHeight', 'occupiedVoxelAt', 'worldVoxelEntry', 'baseVoxelType', 'getSurfaceType',
-  'supportHeightAt', 'worldChunkKey', 'positiveLocal'];
+  'supportHeightAt', 'worldChunkKey', 'positiveLocal', 'reconcileWorldVoxels', 'canOccupyPlayerAt',
+  'resolvePlayerGround'];
 
 const missing = [];
 let code = '';
@@ -87,19 +88,25 @@ if (missing.length) { console.error('missing functions:', missing.join(', ')); p
 
 const prelude = `
 const MIN_HEIGHT=2, MAX_HEIGHT=14, CHUNK_SIZE=16, WORLD_FLOOR=0, MAX_STEP_HEIGHT=1.05;
+const PLAYER_RADIUS=0.34, PLAYER_HEIGHT=1.72;
+const PLAYER_COLLISION_SAMPLES=[[0,0],[PLAYER_RADIUS,0],[-PLAYER_RADIUS,0],[0,PLAYER_RADIUS],[0,-PLAYER_RADIUS],
+  [PLAYER_RADIUS*0.72,PLAYER_RADIUS*0.72],[PLAYER_RADIUS*0.72,-PLAYER_RADIUS*0.72],
+  [-PLAYER_RADIUS*0.72,PLAYER_RADIUS*0.72],[-PLAYER_RADIUS*0.72,-PLAYER_RADIUS*0.72]];
+const player={x:0.5,y:7,z:0.5,groundY:7};
 const BLOCK_GRASS=0, BLOCK_DIRT=1, BLOCK_STONE=2;
 const BLOCK_NAME_TO_TYPE={grass:0,dirt:1,stone:2};
 const terrain={seed:4102026,chunks:new Map()};
 const worldState={chunks:new Map()};
 `;
 const api = new Function(prelude + code +
-  'return { baseTerrainHeightForBuild, getTerrainHeight, getTerrainCellHeight, occupiedVoxelAt, supportHeightAt };')();
+  `return { baseTerrainHeightForBuild, getTerrainHeight, getTerrainCellHeight, occupiedVoxelAt,
+            supportHeightAt, reconcileWorldVoxels, canOccupyPlayerAt, resolvePlayerGround };`)();
 
 // ---------------------------------------------------------------- exercise
 
 const results = [];
 function check(label, fn) {
-  try { const v = fn(); results.push([Number.isFinite(v) || v === null || typeof v === 'object', label, v]); }
+  try { const v = fn(); results.push([Number.isFinite(v) || typeof v === 'boolean' || v === null || typeof v === 'object', label, v]); }
   catch (e) { results.push([false, label, `${e.name}: ${e.message}`]); }
 }
 
@@ -125,6 +132,27 @@ try {
 } catch (e) {
   results.push([false, `column sweep (failed after ${sampled})`, `${e.name}: ${e.message}`]);
 }
+
+// reconcileWorldVoxels() is the function that actually threw in production: it
+// runs for every chunk inside regenerateTerrain(), which handleWelcome() calls.
+// Exercising it is the closest thing to reproducing the original hang.
+try {
+  const began = Date.now();
+  let cells = 0;
+  for (const [cx, cz] of [[0, 0], [1, 0], [-1, 2], [3, -4]]) {
+    const instances = [];
+    api.reconcileWorldVoxels(instances, cx, cz);
+    if (instances.length % 4 !== 0) throw new Error('malformed instance buffer');
+    cells += instances.length / 4;
+  }
+  results.push([cells > 0, `reconcileWorldVoxels over 4 chunks in ${Date.now() - began}ms`,
+    `${cells} voxels emitted`]);
+} catch (e) {
+  results.push([false, 'reconcileWorldVoxels (the function that crashed)', `${e.name}: ${e.message}`]);
+}
+
+check('canOccupyPlayerAt(0.5, 0.5, 7)', () => api.canOccupyPlayerAt(0.5, 0.5, 7));
+check('resolvePlayerGround(0.5, 0.5, 7)', () => api.resolvePlayerGround(0.5, 0.5, 7));
 
 // The loop must not come back: nothing may call overlayColumnHeight from
 // baseTerrainHeightForBuild ever again.
