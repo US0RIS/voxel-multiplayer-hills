@@ -33,7 +33,42 @@ USER_COLUMNS = (
     "id,discord_id,discord_username,display_name,avatar_url,coins,"
     "role,banned_until,ban_reason,banned_at,banned_by"
 )
+# The column set before migration 005. Used as an automatic fallback so the
+# server keeps authenticating people when it is deployed ahead of the
+# migration. Without this, a missing column turns every session lookup into an
+# error and locks every account out of the game.
+LEGACY_USER_COLUMNS = "id,discord_id,discord_username,display_name,avatar_url,coins"
 STAFF_ROLES = ("moderator", "admin")
+
+_COLUMN_STATE = {"extended": True, "warned": False}
+
+
+def user_columns() -> str:
+    return USER_COLUMNS if _COLUMN_STATE["extended"] else LEGACY_USER_COLUMNS
+
+
+def schema_status() -> str:
+    """Reported by /health so the migration state is visible from outside."""
+    return "ready" if _COLUMN_STATE["extended"] else "migration_005_missing"
+
+
+def _looks_like_missing_column(error: "SupabaseError") -> bool:
+    text = f"{error} {error.payload}".lower()
+    return "does not exist" in text or "42703" in text or "column" in text and "schema cache" in text
+
+
+def _downgrade_columns(error: "SupabaseError") -> None:
+    if _COLUMN_STATE["extended"]:
+        _COLUMN_STATE["extended"] = False
+    if not _COLUMN_STATE["warned"]:
+        _COLUMN_STATE["warned"] = True
+        print(
+            "WARNING: game_users is missing the migration 005 columns "
+            f"({error}). Falling back to the pre-005 column set so logins keep "
+            "working. Staff roles and bans stay inactive until you run "
+            "SUPABASE_MIGRATION_005_ADMIN_ROLES.sql.",
+            flush=True,
+        )
 
 
 class SupabaseError(RuntimeError):
@@ -190,15 +225,7 @@ class SupabaseStore:
         if not isinstance(sessions, list) or not sessions:
             return None
         session = dict(sessions[0])
-        users = self._request(
-            "GET",
-            "game_users",
-            query={
-                "select": USER_COLUMNS,
-                "id": f"eq.{session['user_id']}",
-                "limit": "1",
-            },
-        )
+        users = self.select_users({"id": f"eq.{session['user_id']}", "limit": "1"})
         if not isinstance(users, list) or not users:
             return None
         session["user"] = dict(users[0])
@@ -412,15 +439,45 @@ class SupabaseStore:
 
     # ------------------------------------------------------ roles and bans
 
+    def select_users(self, query: dict[str, str]) -> Any:
+        """Read game_users, retrying without the migration-005 columns if needed."""
+        try:
+            return self._request("GET", "game_users", query={**query, "select": user_columns()})
+        except SupabaseError as exc:
+            if not _COLUMN_STATE["extended"] or not _looks_like_missing_column(exc):
+                raise
+            _downgrade_columns(exc)
+            return self._request("GET", "game_users", query={**query, "select": user_columns()})
+
     def get_user(self, user_id: str) -> dict[str, Any] | None:
-        rows = self._request(
-            "GET",
-            "game_users",
-            query={"select": USER_COLUMNS, "id": f"eq.{user_id}", "limit": "1"},
-        )
+        rows = self.select_users({"id": f"eq.{user_id}", "limit": "1"})
         if not isinstance(rows, list) or not rows:
             return None
         return dict(rows[0])
+
+    def find_user_by_password_username(self, username: str) -> dict[str, Any] | None:
+        """Resolve an account by its login username.
+
+        This is the authoritative identity for password accounts: it is unique,
+        immutable, and stored normalized. Display names are neither -- players
+        change them with /nick and two accounts can pick the same one -- so any
+        decision about privilege must key off this, not display_name.
+        """
+        normalized = str(username or "").strip().lower()
+        if not normalized:
+            return None
+        rows = self._request(
+            "GET",
+            "game_password_credentials",
+            query={
+                "select": "user_id,username",
+                "username_normalized": f"eq.{normalized}",
+                "limit": "1",
+            },
+        )
+        if not isinstance(rows, list) or not rows:
+            return None
+        return self.get_user(str(rows[0]["user_id"]))
 
     def find_users_by_name(self, name: str, limit: int = 8) -> list[dict[str, Any]]:
         """Look an account up by display name, then by password username."""
@@ -428,15 +485,7 @@ class SupabaseStore:
         if not needle:
             return []
         escaped = needle.replace("\\", "\\\\").replace('"', '\\"')
-        rows = self._request(
-            "GET",
-            "game_users",
-            query={
-                "select": USER_COLUMNS,
-                "display_name": f'ilike."{escaped}"',
-                "limit": str(int(limit)),
-            },
-        )
+        rows = self.select_users({"display_name": f'ilike."{escaped}"', "limit": str(int(limit))})
         found = [dict(row) for row in rows] if isinstance(rows, list) else []
         if found:
             return found
@@ -456,16 +505,11 @@ class SupabaseStore:
         return [user] if user else []
 
     def list_staff(self) -> list[dict[str, Any]]:
-        rows = self._request(
-            "GET",
-            "game_users",
-            query={
-                "select": USER_COLUMNS,
-                "role": "in.(" + ",".join(STAFF_ROLES) + ")",
-                "order": "display_name.asc",
-                "limit": "200",
-            },
-        )
+        rows = self.select_users({
+            "role": "in.(" + ",".join(STAFF_ROLES) + ")",
+            "order": "display_name.asc",
+            "limit": "200",
+        })
         return [dict(row) for row in rows] if isinstance(rows, list) else []
 
     def set_user_role(self, user_id: str, role: str) -> dict[str, Any]:

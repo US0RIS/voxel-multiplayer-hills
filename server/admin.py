@@ -174,6 +174,11 @@ def resolve_target(query: str) -> dict[str, Any]:
     if not needle:
         raise AdminError("no_target", "Name the player you want to act on.")
     try:
+        # Login username wins: it is unique and cannot be changed with /nick,
+        # so it can never resolve to the wrong account.
+        exact_login = STORE.find_user_by_password_username(needle)
+        if exact_login:
+            return dict(exact_login)
         matches = STORE.find_users_by_name(needle)
     except SupabaseError as exc:
         raise AdminError("lookup_failed", f"Account lookup failed: {exc}") from exc
@@ -364,19 +369,29 @@ def bootstrap_admins() -> None:
         return
     for username in ADMIN_BOOTSTRAP_NAMES:
         try:
-            matches = STORE.find_users_by_name(username)
+            # ADMIN_USERNAMES names LOGIN usernames. Resolve those first so a
+            # stranger cannot inherit admin merely by setting their display
+            # name to "Admin". Discord accounts have no login username, so
+            # fall back to display name only when no credential matches.
+            match = STORE.find_user_by_password_username(username)
+            matches = [match] if match else STORE.find_users_by_name(username)
         except SupabaseError as exc:
             print(f"Admin bootstrap lookup failed for {username}: {exc}", flush=True)
             continue
         if not matches:
             print(
-                f"Admin bootstrap: no account named “{username}” yet — "
+                f"Admin bootstrap: no account with the username “{username}” yet — "
                 "register it, then restart the service.",
                 flush=True,
             )
             continue
         for row in matches:
             if auth.normalize_role(row.get("role")) == ROLE_ADMIN:
+                print(
+                    f"Admin bootstrap: “{username}” is already admin "
+                    f"(account {row.get('id')}, display name “{row.get('display_name')}”).",
+                    flush=True,
+                )
                 continue
             try:
                 STORE.set_user_role(str(row["id"]), ROLE_ADMIN)
@@ -389,7 +404,11 @@ def bootstrap_admins() -> None:
                     detail={"from": auth.normalize_role(row.get("role")), "to": ROLE_ADMIN, "source": "bootstrap"},
                 )
                 auth.invalidate_user(str(row["id"]))
-                print(f"Admin bootstrap: promoted {row.get('display_name')} to admin.", flush=True)
+                print(
+                    f"Admin bootstrap: promoted “{username}” to admin "
+                    f"(account {row.get('id')}, display name “{row.get('display_name')}”).",
+                    flush=True,
+                )
             except (SupabaseError, ValueError) as exc:
                 print(f"Admin bootstrap failed for {username}: {exc}", flush=True)
 
@@ -397,16 +416,41 @@ def bootstrap_admins() -> None:
 ADMIN_BOOTSTRAP_NAMES = tuple(getattr(auth, "ADMIN_USERNAMES", ()))
 
 
-def start_bootstrap() -> None:
-    """Run the bootstrap off the request path so a slow Supabase never blocks boot."""
-    if not ADMIN_BOOTSTRAP_NAMES:
+def schema_status() -> str:
+    from supabase_store import schema_status as _status
+    return _status()
+
+
+def probe_schema() -> None:
+    """Touch game_users once so the migration state is known before first login.
+
+    Without this, /health reports "ready" until somebody's session lookup
+    happens to discover the columns are missing.
+    """
+    if not STORE.ready:
         return
+    try:
+        STORE.select_users({"limit": "1"})
+    except SupabaseError as exc:
+        print(f"Schema probe failed: {exc}", flush=True)
+
+
+def start_bootstrap() -> None:
+    """Run startup work off the request path so a slow Supabase never blocks boot."""
 
     def run() -> None:
         time.sleep(1.0)
         try:
-            bootstrap_admins()
+            probe_schema()
+            if schema_status() != "ready":
+                print(
+                    "Staff roles are INACTIVE: run "
+                    "SUPABASE_MIGRATION_005_ADMIN_ROLES.sql, then redeploy.",
+                    flush=True,
+                )
+            elif ADMIN_BOOTSTRAP_NAMES:
+                bootstrap_admins()
         except Exception as exc:  # pragma: no cover - defensive
-            print(f"Admin bootstrap crashed: {type(exc).__name__}: {exc}", flush=True)
+            print(f"Admin startup crashed: {type(exc).__name__}: {exc}", flush=True)
 
     threading.Thread(target=run, name="ridgewood-admin-bootstrap", daemon=True).start()

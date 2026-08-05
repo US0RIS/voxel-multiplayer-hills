@@ -17,7 +17,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from supabase_store import STORE, USER_COLUMNS, SupabaseError, utc_now_iso
+from supabase_store import STORE, SupabaseError, utc_now_iso
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,24}$")
 MIN_PASSWORD_LENGTH = 10
@@ -111,10 +111,7 @@ def _credential(normalized: str) -> dict[str, Any] | None:
 
 
 def _user(user_id: str) -> dict[str, Any] | None:
-    rows = STORE._request(
-        "GET", "game_users",
-        query={"select": USER_COLUMNS, "id": f"eq.{user_id}", "limit": "1"},
-    )
+    rows = STORE.select_users({"id": f"eq.{user_id}", "limit": "1"})
     if not isinstance(rows, list) or not rows:
         return None
     return dict(rows[0])
