@@ -201,12 +201,24 @@
     const payload = await response.json();
     return payload?.authenticated ? payload.user : null;
   }
-  function installAuthenticatedWebSocket(token) {
-    if (window.__RIDGEWOOD_AUTH_SOCKET_INSTALLED__ || !token) return;
+  // Installed immediately at load, not after /auth/me resolves.
+  //
+  // The home screen's "Public Server" button calls RIDGEWOOD_AUTH_API.startGame()
+  // directly. If it was clicked before the /auth/me round trip finished — very
+  // easy on a cold server — the game opened its socket before this wrapper
+  // existed, so no token was ever sent and the player connected as an anonymous
+  // guest with no role. The token is also read per connection rather than
+  // captured once, so a socket opened before login, or reconnected after it,
+  // always carries the current token.
+  function installAuthenticatedWebSocket() {
+    if (window.__RIDGEWOOD_AUTH_SOCKET_INSTALLED__) return;
     const Native = window.WebSocket;
     function Wrapped(url, protocols) {
+      const token = localStorage.getItem(TOKEN_KEY) || '';
       const next = new URL(String(url), location.href);
-      if (next.host === new URL(AUTH_SERVER).host && !next.searchParams.has('token')) next.searchParams.set('token', token);
+      if (token && next.host === new URL(AUTH_SERVER).host && !next.searchParams.has('token')) {
+        next.searchParams.set('token', token);
+      }
       return protocols === undefined ? new Native(next.toString()) : new Native(next.toString(), protocols);
     }
     Wrapped.prototype = Native.prototype;
@@ -219,7 +231,7 @@
     gameStarted = true;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = 'game-loader-v0.8.0.js?v=0.8.0';
+    script.src = 'game-loader-v0.8.0.js?v=0.8.1';
     script.onerror = () => { gameStarted = false; window.RIDGEWOOD_HOME?.setStatus('offline', 'Game module failed to load'); };
     document.body.append(script);
   }
@@ -245,7 +257,7 @@
   }
   function activate(user) {
     const token = localStorage.getItem(TOKEN_KEY) || '';
-    installAuthenticatedWebSocket(token);
+    installAuthenticatedWebSocket();
     window.RIDGEWOOD_AUTH = Object.freeze({ token, user, serverUrl: AUTH_SERVER });
     window.dispatchEvent(new CustomEvent('ridgewood:auth-ready', { detail: window.RIDGEWOOD_AUTH }));
     showSignedIn(user);
@@ -286,6 +298,10 @@
       window.RIDGEWOOD_HOME?.setStatus('offline','Could not reach the login server');
     }
   }
+
+  // Before initialize(), before any click handler, before the game module can
+  // exist. This is the whole point: nothing may open a socket first.
+  installAuthenticatedWebSocket();
 
   logoutButton?.addEventListener('click', () => window.RIDGEWOOD_AUTH_API.logout());
   window.RIDGEWOOD_AUTH_API = Object.freeze({
