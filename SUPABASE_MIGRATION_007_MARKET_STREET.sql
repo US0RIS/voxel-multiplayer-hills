@@ -3,8 +3,8 @@
 --
 -- Layout:
 --   * street centerline: x = 8.5, running north/south along z
---   * stalls 1-10: west side at x = 4.25, facing east/inward
---   * stalls 11-20: east side at x = 12.75, facing west/inward
+--   * stalls 1-10: west side at x = 4.0, facing east/inward
+--   * stalls 11-20: east side at x = 13.0, facing west/inward
 --   * ten paired positions from z = -20.25 through z = 20.25
 
 begin;
@@ -20,7 +20,7 @@ where world_id = 'public'
 with layout as (
     select
         stall_number,
-        case when stall_number <= 10 then 4.25 else 12.75 end::double precision as world_x,
+        case when stall_number <= 10 then 4.0 else 13.0 end::double precision as world_x,
         (-20.25 + (
             case when stall_number <= 10 then stall_number - 1 else stall_number - 11 end
         ) * 4.5)::double precision as world_z
