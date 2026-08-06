@@ -10,7 +10,7 @@ window.fetch = (input, init) => {
   return ridgewoodNativeFetch(input, init);
 };
 try {
-  await import('./game-loader-v0.9.0.js?v=0.9.1');
+  await import('./game-loader-v0.9.1.js?v=0.9.1');
 } finally {
   window.fetch = ridgewoodNativeFetch;
 }
