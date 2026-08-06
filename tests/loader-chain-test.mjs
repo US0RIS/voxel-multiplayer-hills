@@ -1,10 +1,8 @@
 /* Resolve the complete Ridgewood loader chain offline.
  *
- * v0.9 keeps the existing v0.8 entry filename as a compatibility module,
- * imports the marketplace client, then resolves v0.9 -> v0.8 base -> v0.6 ->
- * v4.3 -> the WebGL game. Both file imports and generated blob imports are
- * supported here; the final game is identified by source markers rather than a
- * brittle hard-coded depth.
+ * v0.9.1 keeps the existing v0.8 entry filename as a compatibility module,
+ * loads the supplied-stall runtime asset and marketplace UI, then resolves the
+ * WebGL loader delta chain. The final game is identified by source markers.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,7 +17,7 @@ let gameSource = null;
 
 globalThis.fetch = async (url) => {
   const file = path.join(DOCS, String(url).split('?')[0].replace(/^\.\//, ''));
-  fetched.push(path.basename(file));
+  fetched.push(path.relative(DOCS, file));
   if (!fs.existsSync(file)) return { ok: false, status: 404, text: async () => '' };
   return { ok: true, status: 200, text: async () => fs.readFileSync(file, 'utf8') };
 };
@@ -71,10 +69,11 @@ async function ridgewoodImport(reference) {
   if (text == null && !value.startsWith('blob:')) {
     const file = path.join(DOCS, value.split('?')[0].replace(/^\.\//, ''));
     if (!fs.existsSync(file)) throw new Error(`Unknown imported file: ${value}`);
-    fetched.push(path.basename(file));
-    // marketplace-v0.9.0.js is an ordinary UI module, not a loader transform.
-    // Syntax is checked separately; it does not need a DOM execution here.
-    if (path.basename(file) === 'marketplace-v0.9.0.js') return {};
+    fetched.push(path.relative(DOCS, file));
+    const basename = path.basename(file);
+    if (basename === 'marketplace-v0.9.0.js'
+        || basename === 'marketplace-v0.9.1.js'
+        || basename === 'market-stall-v0.9.1.js') return {};
     text = fs.readFileSync(file, 'utf8');
   }
   if (text == null) throw new Error(`Unknown blob: ${value}`);
@@ -100,10 +99,12 @@ const REQUIRED = [
   ['const owns = worldOwnsChunk(record) || rwOverride;', 'build override'],
   ['distance <= rwMaxReach', 'staff build reach'],
   ['adminOverride: Boolean(window.__RIDGEWOOD_ADMIN?.buildOverride)', 'override flag on edits'],
-  ['appendMarketplaceStructures(instances, cx, cz);', 'marketplace voxel structures'],
-  ["kind: 'marketplace'", 'marketplace raycast collision'],
+  ['function marketplaceStreetPlacement(', 'long market street placement'],
+  ['async function decodeMarketStallAsset()', 'supplied stall asset decoder'],
+  ['renderMarketStalls();', 'market stall rendering'],
+  ['marketplaceStallAtVoxel(', 'market stall collision'],
   ['getMarketplaceHover()', 'marketplace pointer API'],
-  ['RIDGEWOOD v0.9.0 ALPHA', 'v0.9 build label']
+  ['RIDGEWOOD v0.9.1 ALPHA', 'v0.9.1 build label']
 ];
 
 console.log(`loader chain: ${fetched.join(' -> ')}`);

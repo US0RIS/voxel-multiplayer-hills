@@ -17,7 +17,6 @@ def patch_economy_runtime(source: str) -> str:
         "economy import",
     )
 
-    # HTTP endpoints run after auth routes and before the generic method guard.
     source = _replace(
         source,
         '''            if auth_response is not None:
@@ -65,7 +64,6 @@ def patch_economy_runtime(source: str) -> str:
         "HTTP economy status reasons",
     )
 
-    # New accounts receive their one-time starter grant before welcome is sent.
     source = _replace(
         source,
         '''            "auth": auth_user,
@@ -103,17 +101,16 @@ def patch_economy_runtime(source: str) -> str:
         "economy handler",
     )
 
-    # Chunk 0,0 is the shared marketplace hub, not claimable private land.
     source = _replace(
         source,
         '''        staff = admin.client_is_staff(client)
         if (chunk_x, chunk_z) != (current_x, current_z) and not staff:''',
         '''        staff = admin.client_is_staff(client)
-        if (chunk_x, chunk_z) == (0, 0):
+        if chunk_x == 0 and -2 <= chunk_z <= 1:
             client.send({
                 "type": "world:claim-result", "ok": False,
                 "error": "marketplace_reserved",
-                "message": "Chunk 0,0 is reserved for the public marketplace."
+                "message": "This chunk is reserved for the public marketplace street."
             })
             return
         if (chunk_x, chunk_z) != (current_x, current_z) and not staff:''',
@@ -127,7 +124,7 @@ def patch_economy_runtime(source: str) -> str:
             result = WORLD.apply_edit(user_id, edit)''',
         '''        try:
             edit = WORLD.validate_edit(client, message)
-            if (edit["chunk_x"], edit["chunk_z"]) == (0, 0) and not (
+            if edit["chunk_x"] == 0 and -2 <= edit["chunk_z"] <= 1 and not (
                 admin.client_is_staff(client) and bool(message.get("adminOverride"))
             ):
                 raise ValueError("marketplace_reserved")
@@ -157,7 +154,7 @@ def patch_economy_runtime(source: str) -> str:
         "economy startup status",
     )
 
-    return source.replace('VERSION = "0.5.0-alpha"', 'VERSION = "0.9.0-alpha"', 1)
+    return source.replace('VERSION = "0.5.0-alpha"', 'VERSION = "0.9.1-alpha"', 1)
 
 
 ECONOMY_HANDLER = '''    def _economy_action(self, client: Client, message: dict[str, Any]) -> None:
