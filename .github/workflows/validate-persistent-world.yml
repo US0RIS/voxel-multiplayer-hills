@@ -1,9 +1,9 @@
-name: Validate persistent world
+name: Validate Ridgewood runtime
 
 on:
   push:
     branches:
-      - feature/persistent-world-v0.5.0
+      - feature/coin-marketplace-v0.9.0
   pull_request:
     branches:
       - main
@@ -19,24 +19,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate Python runtime patches
+      - name: Validate Python runtime patches and migration markers
         run: python3 tools/validate-persistent-world.py
       - name: Validate browser JavaScript syntax
         run: |
           node --check docs/game-loader-v4.3.0.js
+          node --check docs/game-loader-v0.6.0.js
+          node --check docs/game-loader-v0.8.0-base.js
+          node --check docs/game-loader-v0.8.0.js
+          node --check docs/game-loader-v0.9.0.js
+          node --check docs/marketplace-v0.9.0.js
           node --check docs/auth-v0.5.0.js
-          node --check docs/home-v0.5.0.js
-      - name: Confirm production branch remains untouched
+          node --check docs/admin-v0.8.0.js
+      - name: Confirm checkout remains clean
         run: git diff --exit-code
       - name: Package complete source tree
         run: |
-          mkdir -p package/voxel-multiplayer-hills-v0.5.0-alpha
-          git archive HEAD | tar -x -C package/voxel-multiplayer-hills-v0.5.0-alpha
+          mkdir -p package/voxel-multiplayer-hills-v0.9.0-alpha
+          git archive HEAD | tar -x -C package/voxel-multiplayer-hills-v0.9.0-alpha
       - name: Upload complete repository ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: voxel-multiplayer-hills-v0.5.0-alpha
-          path: package/voxel-multiplayer-hills-v0.5.0-alpha
+          name: voxel-multiplayer-hills-v0.9.0-alpha
+          path: package/voxel-multiplayer-hills-v0.9.0-alpha
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
