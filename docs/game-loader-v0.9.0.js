@@ -186,22 +186,34 @@ const EXTRA_PATCHES = [
   const entry = worldVoxelEntry(worldX, y, worldZ);
   if (entry.value?.action === 'remove') return null;
   if (entry.value?.action === 'place') {
-    return { kind: 'placed', type: BLOCK_NAME_TO_TYPE[entry.value?.block?.type] ?? BLOCK_STONE, ...entry };
+    return {
+      kind: 'placed',
+      type: BLOCK_NAME_TO_TYPE[entry.value?.block?.type] ?? BLOCK_STONE,
+      ...entry
+    };
   }
   const height = baseTerrainHeightForBuild(worldX, worldZ);
-  if (y >= WORLD_FLOOR && y < height) return { kind: y === WORLD_FLOOR ? 'bedrock' : 'terrain', type: baseVoxelType(worldX, y, worldZ, height), ...entry };
+  if (y >= WORLD_FLOOR && y < height) {
+    return { kind: y === WORLD_FLOOR ? 'bedrock' : 'terrain', type: baseVoxelType(worldX, y, worldZ, height), ...entry };
+  }
   return null;
 }`, `function occupiedVoxelAt(worldX, y, worldZ) {
   if (![worldX, y, worldZ].every(Number.isFinite)) return null;
   const entry = worldVoxelEntry(worldX, y, worldZ);
   if (entry.value?.action === 'remove') return null;
   if (entry.value?.action === 'place') {
-    return { kind: 'placed', type: BLOCK_NAME_TO_TYPE[entry.value?.block?.type] ?? BLOCK_STONE, ...entry };
+    return {
+      kind: 'placed',
+      type: BLOCK_NAME_TO_TYPE[entry.value?.block?.type] ?? BLOCK_STONE,
+      ...entry
+    };
   }
   const marketplace = marketplaceStallAtVoxel(worldX, y, worldZ);
   if (marketplace) return { ...marketplace, ...entry };
   const height = baseTerrainHeightForBuild(worldX, worldZ);
-  if (y >= WORLD_FLOOR && y < height) return { kind: y === WORLD_FLOOR ? 'bedrock' : 'terrain', type: baseVoxelType(worldX, y, worldZ, height), ...entry };
+  if (y >= WORLD_FLOOR && y < height) {
+    return { kind: y === WORLD_FLOOR ? 'bedrock' : 'terrain', type: baseVoxelType(worldX, y, worldZ, height), ...entry };
+  }
   return null;
 }`, 'marketplace collision'],
   [`  const result = raycastWorld(worldState.pointerX, worldState.pointerY);
