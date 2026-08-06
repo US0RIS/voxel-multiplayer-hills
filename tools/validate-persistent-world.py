@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static validation for the v0.5.0 persistent-world branch."""
+"""Static validation for Ridgewood persistent world, admin, and economy layers."""
 from __future__ import annotations
 
 import base64
@@ -14,6 +14,7 @@ sys.path.insert(0, str(SERVER))
 
 from admin_runtime_patch import patch_admin_runtime  # noqa: E402
 from auth_runtime_patch import patch_auth_runtime  # noqa: E402
+from economy_runtime_patch import patch_economy_runtime  # noqa: E402
 from world_runtime_patch import patch_world_runtime  # noqa: E402
 
 
@@ -22,6 +23,8 @@ for filename in (
     "admin_runtime_patch.py",
     "auth_env.py",
     "auth_supabase.py",
+    "economy.py",
+    "economy_runtime_patch.py",
     "supabase_store.py",
     "world_persistence.py",
     "auth_runtime_patch.py",
@@ -45,6 +48,8 @@ for part in parts:
 source = b"".join(chunks).decode("utf-8")
 source = patch_auth_runtime(source)
 source = patch_world_runtime(source)
+source = patch_admin_runtime(source)
+source = patch_economy_runtime(source)
 spawn_before = '"spawn": {"x": client.spawn_x, "z": client.spawn_z}'
 if spawn_before not in source:
     raise SystemExit("Persistent spawn patch target is absent")
@@ -53,8 +58,7 @@ source = source.replace(
     '"spawn": {"x": client.spawn_x, "y": getattr(client, "y", 0.0), "z": client.spawn_z, "angle": client.angle}',
     1,
 )
-source = patch_admin_runtime(source)
-compile(source, str(SERVER / "ridgewood-v0.5.0-runtime.py"), "exec")
+compile(source, str(SERVER / "ridgewood-v0.9.0-runtime.py"), "exec")
 
 required = (
     'elif message_type == "world:chunks"',
@@ -67,20 +71,43 @@ required = (
     'ban = auth.ban_state(auth_user)',
     'client.role = admin.role_of(auth_user)',
     '"admin": admin.capabilities(',
+    'economy.handle_http_request(',
+    'def _economy_action(self, client: Client, message: dict[str, Any]) -> None:',
+    '"economy": economy.bootstrap_for_user(',
+    '"marketplace": economy.configured()',
+    '"marketplace_reserved"',
 )
 for marker in required:
     if marker not in source:
         raise SystemExit(f"Missing patched runtime marker: {marker}")
 
-print("Persistent-world Python and runtime patches validated.")
+migration = (ROOT / "SUPABASE_MIGRATION_006_COINS_MARKETPLACE.sql").read_text(encoding="utf-8")
+for marker in (
+    "create table if not exists public.coin_transactions",
+    "create table if not exists public.marketplace_stalls",
+    "create table if not exists public.marketplace_listings",
+    "create table if not exists public.player_inventory",
+    "create or replace function public.buy_marketplace_listing",
+    "create or replace function public.spend_coins",
+    "create or replace function public.grant_starter_coins",
+):
+    if marker not in migration.lower():
+        raise SystemExit(f"Missing economy migration marker: {marker}")
+
+for filename in (
+    "game-loader-v0.8.0.js",
+    "game-loader-v0.8.0-base.js",
+    "game-loader-v0.9.0.js",
+    "marketplace-v0.9.0.js",
+    "marketplace-v0.9.0.css",
+):
+    if not (ROOT / "docs" / filename).exists():
+        raise SystemExit(f"Missing marketplace client file: {filename}")
+
+print("Persistent world, administration, and economy runtime patches validated.")
 
 # The chat module ships as base64 parts. If the parts and the source file ever
-# disagree, the deployed game and the checked-in source are different programs,
-# and rebuilding from the stale source silently deletes shipped code.
-#
-# This is a warning rather than a failure because the repository already has
-# this defect and fixing it needs a deliberate decision about which copy wins.
-# Pass --strict to turn it into a hard failure once it has been reconciled.
+# disagree, the deployed game and the checked-in source are different programs.
 chat_source = (ROOT / "docs" / "chat-source-v4.3.0.js").read_bytes()
 chat_parts = sorted((ROOT / "docs" / "chat-parts").glob("part*.b64"))
 chat_bytes = b"".join(
@@ -92,8 +119,7 @@ if chat_bytes != chat_source:
         "WARNING: docs/chat-parts is out of sync with docs/chat-source-v4.3.0.js "
         f"({len(chat_bytes)} bytes in the parts vs {len(chat_source)} in the source).\n"
         "         The parts are what production runs, so the source is the stale copy.\n"
-        "         Do NOT run tools/build-parts.py until this is reconciled -- it would\n"
-        "         rebuild from the stale source and delete the difference.\n"
+        "         Do NOT run tools/build-parts.py until this is reconciled.\n"
         "         Fix with: python3 tools/reconcile-chat-parts.py"
     )
     if "--strict" in sys.argv:
@@ -102,4 +128,4 @@ if chat_bytes != chat_source:
 else:
     print("Chat parts match the chat source.")
 
-print("Admin roles and moderation patches validated.")
+print("Coin and marketplace files validated.")
