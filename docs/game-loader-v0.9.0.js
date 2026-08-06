@@ -184,16 +184,6 @@ const EXTRA_PATCHES = [
   refreshMarketplaceHub,
   focusCanvas() { canvas.focus(); }`,
     'marketplace game API'
-  ],
-  [
-    `      const labels = { already_claimed: 'That chunk is already claimed.', claim_limit: 'You have reached your chunk claim limit.', stand_in_chunk_to_claim: 'Stand inside a chunk to claim it.', forbidden: 'You do not have permission to do that.' };`,
-    `      const labels = { already_claimed: 'That chunk is already claimed.', claim_limit: 'You have reached your chunk claim limit.', stand_in_chunk_to_claim: 'Stand inside a chunk to claim it.', forbidden: 'You do not have permission to do that.', marketplace_reserved: 'Chunk 0,0 is reserved for the public marketplace.' };`,
-    'marketplace claim error'
-  ],
-  [
-    `    const labels = { not_owner: 'That chunk belongs to another player.', chunk_not_claimed: 'Claim this chunk before building.', too_far: 'Move closer to the build location.', rate_limited: 'You are building too quickly.' };`,
-    `    const labels = { not_owner: 'That chunk belongs to another player.', chunk_not_claimed: 'Claim this chunk before building.', too_far: 'Move closer to the build location.', rate_limited: 'You are building too quickly.', marketplace_reserved: 'The marketplace hub is protected public infrastructure.' };`,
-    'marketplace build error'
   ]
 ];
 
