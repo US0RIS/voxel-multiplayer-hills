@@ -54,8 +54,6 @@ globalThis.window = globalThis;
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.addEventListener = () => {};
 
-globalThis.crypto = { randomUUID: () => '00000000-0000-4000-8000-000000000000' };
-
 async function evaluate(text) {
   const source = text.replace(/await import\(/g, 'await __ridgewoodImport(');
   return new Function('__ridgewoodImport', `return (async () => { ${source} })();`)(ridgewoodImport);
