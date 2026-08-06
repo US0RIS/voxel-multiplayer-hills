@@ -1,0 +1,170 @@
+/* Ridgewood v0.9.0 — coin HUD and marketplace panels. */
+#rw-economy-hud {
+  position: fixed;
+  z-index: 45;
+  top: 18px;
+  right: 376px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid rgba(244, 199, 90, .48);
+  border-radius: 8px;
+  background: rgba(19, 25, 21, .9);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .32), inset 0 1px rgba(255,255,255,.06);
+  color: #f8e2a0;
+  font: 700 13px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  backdrop-filter: blur(9px);
+}
+#rw-economy-hud[hidden] { display: none; }
+.rw-coin-mark {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: linear-gradient(#ffd76f, #c88a16);
+  box-shadow: inset 0 0 0 3px rgba(96, 52, 0, .23);
+  color: #553000;
+  font-size: 14px;
+}
+#rw-market-button {
+  border: 0;
+  padding: 3px 5px;
+  background: transparent;
+  color: #cbd7ce;
+  font: inherit;
+  cursor: pointer;
+}
+#rw-market-button:hover { color: #fff; }
+
+#rw-marketplace-panel,
+#rw-marketplace-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 8, 6, .68);
+  backdrop-filter: blur(8px);
+}
+#rw-marketplace-panel[hidden],
+#rw-marketplace-dialog[hidden] { display: none; }
+.rw-market-card {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: auto;
+  border: 1px solid rgba(143, 199, 106, .48);
+  border-radius: 13px;
+  background: linear-gradient(155deg, #202b24, #111813 72%);
+  box-shadow: 0 28px 80px rgba(0,0,0,.62), inset 0 1px rgba(255,255,255,.07);
+  color: #edf3eb;
+}
+.rw-market-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(26, 36, 29, .96);
+}
+.rw-market-head h2 { margin: 0 0 4px; font-size: 22px; }
+.rw-market-head p { margin: 0; color: #aebcaf; font-size: 13px; }
+.rw-market-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 7px;
+  background: #172019;
+  color: #dce7dd;
+  font-size: 22px;
+  cursor: pointer;
+}
+.rw-market-balance {
+  margin: 16px 22px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(244, 199, 90, .1);
+  color: #f7d77c;
+  font-weight: 800;
+}
+.rw-market-list { display: grid; gap: 10px; padding: 16px 22px 22px; }
+.rw-market-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
+}
+.rw-market-item strong { display: block; margin-bottom: 3px; }
+.rw-market-meta { color: #9eaea1; font-size: 12px; }
+.rw-market-price { color: #f7d77c; font-weight: 800; }
+.rw-market-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 22px 22px;
+}
+.rw-market-button,
+.rw-market-danger {
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 7px;
+  padding: 9px 13px;
+  background: #2c5133;
+  color: white;
+  font: 700 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.rw-market-button:hover { background: #376a40; }
+.rw-market-button:disabled { opacity: .46; cursor: not-allowed; }
+.rw-market-danger { background: #5d2d2b; }
+.rw-market-danger:hover { background: #743735; }
+.rw-market-empty { padding: 23px; color: #9eaea1; text-align: center; }
+.rw-market-form { display: grid; gap: 14px; padding: 20px 22px 24px; }
+.rw-market-form label { display: grid; gap: 6px; color: #b9c6bb; font-size: 12px; font-weight: 700; }
+.rw-market-form input,
+.rw-market-form select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 7px;
+  padding: 10px 11px;
+  background: #0f1611;
+  color: #eef5ef;
+  font: 14px system-ui, sans-serif;
+}
+.rw-market-error { min-height: 18px; margin: 0; color: #ff9d95; font-size: 12px; }
+#rw-market-toasts {
+  position: fixed;
+  z-index: 130;
+  left: 20px;
+  bottom: 20px;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 40px));
+  pointer-events: none;
+}
+.rw-market-toast {
+  padding: 12px 14px;
+  border: 1px solid rgba(143,199,106,.4);
+  border-radius: 8px;
+  background: rgba(18,27,21,.96);
+  color: #eef5ef;
+  box-shadow: 0 12px 32px rgba(0,0,0,.42);
+  animation: rw-toast-in .18s ease-out;
+}
+.rw-market-toast[data-state="error"] { border-color: rgba(255,120,110,.5); }
+@keyframes rw-toast-in { from { opacity: 0; transform: translateY(8px); } }
+@media (max-width: 900px) {
+  #rw-economy-hud { top: 64px; right: 10px; }
+  #rw-marketplace-panel, #rw-marketplace-dialog { padding: 10px; }
+  .rw-market-card { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
+}
