@@ -71,7 +71,6 @@ function marketplaceVoxelMap() {
     const ground = baseTerrainHeightForBuild(centerX, centerZ);
     const displayType = marketplaceListingBlock(stall);
 
-    // Compact two-wide kiosk: raised counter, rear posts, roof, and display.
     for (const x of [centerX - 1, centerX]) {
       put(x, ground, centerZ, BLOCK_STONE, stall);
       put(x, ground, centerZ + 1, BLOCK_STONE, stall);
@@ -119,17 +118,39 @@ const EXTRA_PATCHES = [
   ],
   [
     `function occupiedVoxelAt(worldX, y, worldZ) {
-  const placed = placedVoxelAt(worldX, y, worldZ);
-  if (placed) return placed;
-  if (y < baseTerrainHeightForBuild(worldX, worldZ)) return { kind: 'terrain' };
+  if (![worldX, y, worldZ].every(Number.isFinite)) return null;
+  const entry = worldVoxelEntry(worldX, y, worldZ);
+  if (entry.value?.action === 'remove') return null;
+  if (entry.value?.action === 'place') {
+    return {
+      kind: 'placed',
+      type: BLOCK_NAME_TO_TYPE[entry.value?.block?.type] ?? BLOCK_STONE,
+      ...entry
+    };
+  }
+  const height = baseTerrainHeightForBuild(worldX, worldZ);
+  if (y >= WORLD_FLOOR && y < height) {
+    return { kind: y === WORLD_FLOOR ? 'bedrock' : 'terrain', type: baseVoxelType(worldX, y, worldZ, height), ...entry };
+  }
   return null;
 }`,
     `function occupiedVoxelAt(worldX, y, worldZ) {
-  const placed = placedVoxelAt(worldX, y, worldZ);
-  if (placed) return placed;
+  if (![worldX, y, worldZ].every(Number.isFinite)) return null;
+  const entry = worldVoxelEntry(worldX, y, worldZ);
+  if (entry.value?.action === 'remove') return null;
+  if (entry.value?.action === 'place') {
+    return {
+      kind: 'placed',
+      type: BLOCK_NAME_TO_TYPE[entry.value?.block?.type] ?? BLOCK_STONE,
+      ...entry
+    };
+  }
   const marketplace = marketplaceVoxelAt(worldX, y, worldZ);
-  if (marketplace) return marketplace;
-  if (y < baseTerrainHeightForBuild(worldX, worldZ)) return { kind: 'terrain' };
+  if (marketplace) return { ...marketplace, ...entry };
+  const height = baseTerrainHeightForBuild(worldX, worldZ);
+  if (y >= WORLD_FLOOR && y < height) {
+    return { kind: y === WORLD_FLOOR ? 'bedrock' : 'terrain', type: baseVoxelType(worldX, y, worldZ, height), ...entry };
+  }
   return null;
 }`,
     'marketplace collision and raycast'
@@ -150,10 +171,10 @@ const EXTRA_PATCHES = [
     'marketplace pointer target'
   ],
   [
-    `  appendWorldOverlay(instances, cx, cz);
+    `  reconcileWorldVoxels(instances, cx, cz);
   const instanceData = new Float32Array(instances);`,
-    `  appendMarketplaceStructures(instances, cx, cz);
-  appendWorldOverlay(instances, cx, cz);
+    `  reconcileWorldVoxels(instances, cx, cz);
+  appendMarketplaceStructures(instances, cx, cz);
   const instanceData = new Float32Array(instances);`,
     'marketplace terrain instances'
   ],
